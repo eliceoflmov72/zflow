@@ -1,0 +1,76 @@
+<sidebar title="Ajustes de Relación" position="right" (close)="gridService.selectConnection(null)">
+  <div class="ff-section-label">Propiedades</div>
+
+  <label class="ff-control-label">Dirección</label>
+  <div class="ff-segmented-control">
+    <button
+      class="ff-segment-btn"
+      [class.active]="!conn.directed"
+      (click)="updateConnection.emit({ id: conn.id, updates: { directed: false } })"
+      title="Sin Flechas"
+    >
+      —
+    </button>
+    <button
+      class="ff-segment-btn"
+      [class.active]="conn.directed && getAllowedDirection(conn) === 'forward'"
+      (click)="updateConnection.emit({ id: conn.id, updates: { directed: true, direction: 'forward' } })"
+      title="Adelante"
+    >
+      →
+    </button>
+    <button
+      class="ff-segment-btn"
+      [class.active]="conn.directed && getAllowedDirection(conn) === 'reverse'"
+      (click)="updateConnection.emit({ id: conn.id, updates: { directed: true, direction: 'reverse' } })"
+      title="Atrás"
+    >
+      ←
+    </button>
+    <button
+      class="ff-segment-btn"
+      [class.active]="conn.directed && getAllowedDirection(conn) === 'bi'"
+      (click)="updateConnection.emit({ id: conn.id, updates: { directed: true, direction: 'bi' } })"
+      title="Bidireccional"
+    >
+      ↔
+    </button>
+  </div>
+
+  <label class="ff-control-label" style="margin-top: 1rem;">Estilo de Línea</label>
+  <div class="ff-segmented-control">
+    <button
+      class="ff-segment-btn"
+      [class.active]="!conn.lineType || conn.lineType === 'solid'"
+      (click)="updateConnection.emit({ id: conn.id, updates: { lineType: 'solid' } })"
+      title="Línea Continua"
+    >
+      Continua
+    </button>
+    <button
+      class="ff-segment-btn"
+      [class.active]="conn.lineType === 'dashed'"
+      (click)="updateConnection.emit({ id: conn.id, updates: { lineType: 'dashed' } })"
+      title="Línea Punteada"
+    >
+      Punteada
+    </button>
+  </div>
+
+  <div class="ff-section-label">Color de Línea</div>
+  <div class="ff-row">
+    <div class="ff-field">
+      <input
+        type="color"
+        [value]="conn.color || '#3b82f6'"
+        (input)="onConnectionColorInput.emit({ event: $event, id: conn.id })"
+        style="width: 100%;"
+      />
+    </div>
+  </div>
+
+  <div class="ff-section-label">Acciones</div>
+  <button class="ff-btn-delete" (click)="gridService.removeConnection(conn.id)">
+    <i class="pi pi-trash"></i> Eliminar Relación
+  </button>
+</sidebar>

@@ -1,0 +1,16 @@
+{
+  "name": "zflow",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "cd ../.. && ng build zflow"
+  },
+  "peerDependencies": {
+    "@angular/common": "^21.0.0",
+    "@angular/core": "^21.0.0",
+    "seshat-components": "workspace:*"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor">
+  <!-- Isometric Cylinder - clean version -->
+  <!-- Top ellipse -->
+  <ellipse cx="12" cy="6" rx="8" ry="4" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="0.8"/>
+  <!-- Left edge -->
+  <line x1="4" y1="6" x2="4" y2="18" stroke="currentColor" stroke-width="0.8"/>
+  <!-- Right edge -->
+  <line x1="20" y1="6" x2="20" y2="18" stroke="currentColor" stroke-width="0.8"/>
+  <!-- Bottom ellipse (visible front half only) -->
+  <path d="M4,18 A8,4 0 0,0 20,18" fill="none" stroke="currentColor" stroke-width="0.8"/>
+</svg>

@@ -1,0 +1,22 @@
+<div 
+  class="ff-sidebar-base"
+  [class.ff-sidebar-right]="position === 'right'"
+  [class.ff-sidebar-left]="position === 'left'"
+>
+  @if (title || showCloseButton) {
+    <div class="ff-sidebar-header">
+      @if (title) {
+        <h3>{{ title }}</h3>
+      }
+      @if (showCloseButton) {
+        <button class="ff-icon-close" (click)="close.emit()">
+          <div
+            class="ff-icon"
+            style="width: 14px; height: 14px; mask-image: url(/icons/close.svg); stroke-width: 3;"
+          ></div>
+        </button>
+      }
+    </div>
+  }
+  <ng-content></ng-content>
+</div>

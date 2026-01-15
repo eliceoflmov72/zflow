@@ -1,0 +1,12 @@
+<div 
+  class="ff-toolbar-base"
+  [class.ff-toolbar-rounded]="variant === 'rounded'"
+  [class.ff-toolbar-semi-rounded]="variant === 'semi-rounded'"
+  [class.ff-position-top-center]="position === 'top-center'"
+  [class.ff-position-bottom-right]="position === 'bottom-right'"
+  [class.ff-position-bottom-left]="position === 'bottom-left'"
+  [class.ff-position-top-left]="position === 'top-left'"
+  [class.ff-position-top-right]="position === 'top-right'"
+>
+  <ng-content></ng-content>
+</div>

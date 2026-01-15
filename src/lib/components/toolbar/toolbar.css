@@ -1,0 +1,152 @@
+/* ===========================================
+   Base Toolbar Styles
+   =========================================== */
+
+.ff-toolbar-base {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 0.6rem 1rem;
+  color: #1e293b;
+  pointer-events: auto;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 101;
+}
+
+/* ===========================================
+   Variant: Rounded (pill style)
+   =========================================== */
+
+.ff-toolbar-rounded {
+  border-radius: 99px;
+  gap: 0.8rem;
+  padding: 0.6rem 1.2rem;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* ===========================================
+   Variant: Semi-rounded
+   =========================================== */
+
+.ff-toolbar-semi-rounded {
+  border-radius: 12px;
+  gap: 0.6rem;
+}
+
+/* ===========================================
+   Position Classes
+   =========================================== */
+
+.ff-position-top-center {
+  top: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ff-position-bottom-right {
+  bottom: 1.5rem;
+  right: 1.5rem;
+}
+
+.ff-position-bottom-left {
+  bottom: 1.5rem;
+  left: 1.5rem;
+}
+
+.ff-position-top-left {
+  top: 1.5rem;
+  left: 1.5rem;
+}
+
+.ff-position-top-right {
+  top: 1.5rem;
+  right: 1.5rem;
+}
+
+/* ===========================================
+   Common Child Styles (passed to children)
+   =========================================== */
+
+.ff-toolbar-base ::ng-deep .ff-mode-toggle {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.ff-toolbar-base ::ng-deep .ff-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.ff-toolbar-base ::ng-deep .ff-divider-v {
+  width: 1px;
+  height: 1.25rem;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.ff-toolbar-base ::ng-deep button {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0.5rem;
+  border-radius: 8px;
+}
+
+.ff-toolbar-base ::ng-deep button:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1e293b;
+}
+
+.ff-toolbar-rounded ::ng-deep button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: #475569;
+}
+
+.ff-toolbar-base ::ng-deep button.active {
+  background: transparent !important;
+  color: #3b82f6 !important;
+  box-shadow: none !important;
+}
+
+.ff-toolbar-base ::ng-deep .ff-btn-clear {
+  color: #94a3b8;
+  padding: 8px;
+}
+
+.ff-toolbar-base ::ng-deep .ff-btn-clear:hover {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.ff-toolbar-base ::ng-deep .ff-zoom-label {
+  min-width: 50px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+}
+
+.ff-toolbar-base ::ng-deep .ff-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}

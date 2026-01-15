@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor">
+  <!-- Isometric Package Box -->
+  <!-- Main box outline -->
+  <path d="M3 17.1101V6.88992C3 6.65281 3.13964 6.43794 3.35632 6.34164L11.7563 2.6083C11.9115 2.53935 12.0885 2.53935 12.2437 2.6083L20.6437 6.34164C20.8604 6.43794 21 6.65281 21 6.88992V17.1101C21 17.3472 20.8604 17.5621 20.6437 17.6584L12.2437 21.3917C12.0885 21.4606 11.9115 21.4606 11.7563 21.3917L3.35632 17.6584C3.13964 17.5621 3 17.3472 3 17.1101Z" stroke="currentColor" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Center vertical line -->
+  <path d="M12 10.5V21.5" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+  <!-- Left diagonal from center -->
+  <path d="M3 6.5L12 10.5" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+  <!-- Right diagonal from center -->
+  <path d="M21 6.5L12 10.5" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+  <!-- Inner package detail -->
+  <path d="M7.5 4.5L16.1437 8.34164C16.3604 8.43794 16.5 8.65281 16.5 8.88992V12.5" stroke="currentColor" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

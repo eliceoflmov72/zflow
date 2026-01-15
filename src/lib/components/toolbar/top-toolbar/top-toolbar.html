@@ -1,0 +1,72 @@
+<toolbar variant="rounded" position="top-center">
+  <div class="ff-mode-toggle">
+    <button
+      [class.active]="editorMode() === 'select'"
+      (click)="editorMode.set('select')"
+      title="Seleccionar (V)"
+    >
+      <div class="ff-icon" style="mask-image: url(/icons/cursor-select.svg)"></div>
+    </button>
+    <button
+      [class.active]="editorMode() === 'pan'"
+      (click)="editorMode.set('pan')"
+      title="Mover / Mano (H)"
+    >
+      <div class="ff-icon" style="mask-image: url(/icons/hand-pan.svg)"></div>
+    </button>
+    <button
+      [class.active]="editorMode() === 'connect' && connectionStyle() === 'straight'"
+      (click)="setConnectMode('straight')"
+      title="Relación Recta (C)"
+    >
+      <div class="ff-icon" style="mask-image: url(/icons/relation-straight.svg)"></div>
+    </button>
+    <button
+      [class.active]="editorMode() === 'connect' && connectionStyle() === 'rounded'"
+      (click)="setConnectMode('rounded')"
+      title="Relación Curva (R)"
+    >
+      <div class="ff-icon" style="mask-image: url(/icons/relation-rounded.svg)"></div>
+    </button>
+
+  </div>
+  <div class="ff-divider"></div>
+  <div class="ff-mode-toggle">
+    <button
+      [class.active]="currentLineType() === 'solid'"
+      (click)="currentLineType.set('solid')"
+      title="Línea Continua"
+    >
+      <div class="ff-icon" style="mask-image: url(/icons/line-solid.svg)"></div>
+    </button>
+    <button
+      [class.active]="currentLineType() === 'dashed'"
+      (click)="currentLineType.set('dashed')"
+      title="Línea Punteada"
+    >
+      <div class="ff-icon" style="mask-image: url(/icons/line-dashed.svg)"></div>
+    </button>
+  </div>
+
+  <div class="ff-divider"></div>
+  <div class="ff-mode-toggle">
+    <button (click)="gridService.undo()" title="Deshacer (Ctrl+Z)">
+      <div class="ff-icon" style="mask-image: url(/icons/undo.svg)"></div>
+    </button>
+    <button (click)="gridService.redo()" title="Rehacer (Ctrl+Y)">
+      <div class="ff-icon" style="mask-image: url(/icons/redo.svg)"></div>
+    </button>
+  </div>
+  <div class="ff-divider"></div>
+  <button
+    (click)="showClearConfirm.set(true)"
+    title="Limpiar Diagrama"
+    class="ff-btn-clear"
+  >
+    <div class="ff-icon" style="mask-image: url(/icons/trash.svg)"></div>
+  </button>
+  <div class="ff-divider"></div>
+  <button (click)="toggleFullscreen()" title="Pantalla Completa">
+    <i [class]="isFullscreen() ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"></i>
+  </button>
+</toolbar>

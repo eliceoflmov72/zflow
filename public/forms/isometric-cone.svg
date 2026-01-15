@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor">
+  <!-- Isometric Cone -->
+  <!-- Apex to base edges -->
+  <line x1="12" y1="2" x2="4" y2="18" stroke="currentColor" stroke-width="0.8"/>
+  <line x1="12" y1="2" x2="20" y2="18" stroke="currentColor" stroke-width="0.8"/>
+  <!-- Base ellipse -->
+  <ellipse cx="12" cy="18" rx="8" ry="4" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="0.8"/>
+  <!-- Body shading -->
+  <path d="M12,2 L4,18 A8,4 0 0,0 20,18 Z" fill="currentColor" fill-opacity="0.1" stroke="none"/>
+</svg>

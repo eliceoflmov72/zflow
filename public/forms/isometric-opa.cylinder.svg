@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor">
+  <!-- Opaque Isometric Cylinder - solid filled like opa.cube -->
+  <!-- Top ellipse (solid) -->
+  <ellipse cx="12" cy="5" rx="8" ry="3.5" fill="currentColor"/>
+  <!-- Body left half -->
+  <path d="M4,5 L4,18 A8,3.5 0 0,0 12,21.5 L12,5 A8,3.5 0 0,1 4,5" fill="currentColor"/>
+  <!-- Body right half -->
+  <path d="M20,5 L20,18 A8,3.5 0 0,1 12,21.5 L12,5 A8,3.5 0 0,0 20,5" fill="currentColor"/>
+</svg>

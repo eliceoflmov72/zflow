@@ -1,0 +1,73 @@
+<sidebar title="Ajustes del Nodo" position="right" (close)="gridService.selectNode(null)">
+  <div class="ff-section-label">Posición</div>
+  <div class="ff-row">
+    <div class="ff-field">
+      <label>X</label>
+      <input [value]="node.position.x" readonly />
+    </div>
+    <div class="ff-field">
+      <label>Y</label>
+      <input [value]="node.position.y" readonly />
+    </div>
+  </div>
+
+  <div class="ff-section-label">Seleccionar Objeto</div>
+  <visual-objects-tab
+    [currentShape]="node.shape3D"
+    (selectShape)="selectObject.emit({ svg: $event || '', node })"
+  ></visual-objects-tab>
+
+  <div class="ff-section-label">Color del Objeto</div>
+  <div class="ff-row" style="margin-bottom: 0.5rem;">
+    <div class="ff-field">
+      <input
+        type="color"
+        [value]="node.color || '#3b82f6'"
+        (input)="onObjectColorInput.emit({ event: $event, node })"
+        style="width: 100%;"
+      />
+    </div>
+  </div>
+
+  @if (recentColors().length > 0) {
+    <div class="ff-recent-colors">
+      @for (color of recentColors(); track color) {
+        <div
+          class="ff-color-swatch"
+          [style.background-color]="color"
+          (click)="applyRecentColorToObject.emit({ color, node })"
+          [title]="color"
+        ></div>
+      }
+    </div>
+  }
+
+  <div class="ff-section-label">Color del Suelo</div>
+  <div class="ff-row" style="margin-bottom: 0.5rem;">
+    <div class="ff-field">
+      <input
+        type="color"
+        [value]="node.floorColor || '#ffffff'"
+        (input)="onFloorColorInput.emit({ event: $event, node })"
+        style="width: 100%;"
+      />
+    </div>
+  </div>
+
+  @if (recentColors().length > 0) {
+    <div class="ff-recent-colors">
+      @for (color of recentColors(); track color) {
+        <div
+          class="ff-color-swatch"
+          [style.background-color]="color"
+          (click)="applyRecentColorToFloor.emit({ color, node })"
+          [title]="color"
+        ></div>
+      }
+    </div>
+  }
+
+  <button class="ff-btn-delete" (click)="deleteSelected.emit()">
+    <i class="pi pi-trash"></i> Eliminar Nodo
+  </button>
+</sidebar>

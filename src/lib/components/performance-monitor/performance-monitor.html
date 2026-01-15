@@ -1,0 +1,13 @@
+<div class="ff-performance-stats">
+  <span
+    class="ff-fps"
+    [class.ff-fps-low]="currentFps() < 30"
+    [class.ff-fps-mid]="currentFps() >= 30 && currentFps() < 55"
+  >
+    {{ currentFps() }} FPS
+  </span>
+  <span class="ff-quality" [attr.data-level]="currentQualityLevel()">
+    {{ currentQualityLevel() | uppercase }}
+  </span>
+  <span class="ff-nodes-count"> {{ visibleNodesCount() }} nodes </span>
+</div>

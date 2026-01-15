@@ -1,0 +1,104 @@
+<sidebar title="Modo Pintura" position="right" [showCloseButton]="false">
+  <div class="ff-section-label">Modo de Pintado</div>
+  <div class="ff-switch-group">
+    <button
+      class="ff-tool-btn"
+      [class.active]="paintTool() === 'rectangle'"
+      (click)="paintTool.set('rectangle')"
+      title="Pintar Zona (Rectángulo)"
+    >
+      <i class="pi pi-box"></i> Zona
+    </button>
+    <button
+      class="ff-tool-btn"
+      [class.active]="paintTool() === 'brush'"
+      (click)="paintTool.set('brush')"
+      title="Pincel Libre"
+    >
+      <i class="pi pi-pencil"></i> Pincel
+    </button>
+  </div>
+
+  <!-- Toggles for Layers -->
+  <div class="ff-section-label">Capas Activas</div>
+  <div class="ff-switch-group">
+    <button
+      class="ff-tool-btn"
+      [class.active]="paintObjectEnabled()"
+      (click)="paintObjectEnabled.set(!paintObjectEnabled())"
+      title="Activar Capa de Objetos"
+    >
+      <i class="pi pi-box"></i> Objetos
+    </button>
+    <button
+      class="ff-tool-btn"
+      [class.active]="paintFloorEnabled()"
+      (click)="paintFloorEnabled.set(!paintFloorEnabled())"
+      title="Activar Capa de Suelo"
+    >
+      <i class="pi pi-th-large"></i> Suelo
+    </button>
+  </div>
+
+  @if (paintObjectEnabled()) {
+    <div class="ff-section-label">Configuración Objeto</div>
+    <visual-objects-tab
+      [currentShape]="brushShape()"
+      [allowClear]="false"
+      (selectShape)="brushShape.set($event || '')"
+    ></visual-objects-tab>
+
+    <div class="ff-row" style="margin-bottom: 0.5rem;">
+      <div class="ff-field">
+        <label>Color Objeto</label>
+        <input
+          type="color"
+          [value]="brushObjectColor()"
+          (input)="brushObjectColor.set($any($event.target).value)"
+          style="width: 100%;"
+        />
+      </div>
+    </div>
+    <!-- Recent Object Colors -->
+    @if (recentColors().length > 0) {
+      <div class="ff-recent-colors">
+        @for (color of recentColors(); track color) {
+          <div
+            class="ff-color-swatch"
+            [style.background-color]="color"
+            (click)="brushObjectColor.set(color)"
+            [title]="color"
+          ></div>
+        }
+      </div>
+    }
+  }
+
+  @if (paintFloorEnabled()) {
+    <div class="ff-section-label" style="margin-top: 1rem;">Configuración Suelo</div>
+    <div class="ff-row" style="margin-bottom: 0.5rem;">
+      <div class="ff-field">
+        <label>Color Suelo</label>
+        <input
+          type="color"
+          [value]="brushFloorColor()"
+          (input)="brushFloorColor.set($any($event.target).value)"
+          style="width: 100%;"
+        />
+      </div>
+    </div>
+    <!-- Recent Floor Colors -->
+    @if (recentColors().length > 0) {
+      <div class="ff-recent-colors">
+        @for (color of recentColors(); track color) {
+          <div
+            class="ff-color-swatch"
+            [style.background-color]="color"
+            (click)="brushFloorColor.set(color)"
+            [title]="color"
+          ></div>
+        }
+      </div>
+    }
+  }
+</sidebar>

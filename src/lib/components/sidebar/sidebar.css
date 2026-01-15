@@ -1,0 +1,346 @@
+/* ===========================================
+   Base Sidebar Styles
+   =========================================== */
+
+.ff-sidebar-base {
+  position: absolute;
+  top: 1.5rem;
+  width: 300px;
+  max-height: calc(100% - 3rem);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(32px);
+  padding: 1.5rem;
+  border-radius: 24px;
+  color: #1e293b;
+  pointer-events: auto;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+  z-index: 102;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* ===========================================
+   Scrollbar Styles
+   =========================================== */
+
+.ff-sidebar-base::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ff-sidebar-base::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ff-sidebar-base::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 20px;
+}
+
+/* ===========================================
+   Position Classes
+   =========================================== */
+
+.ff-sidebar-right {
+  right: 1.5rem;
+}
+
+.ff-sidebar-left {
+  left: 1.5rem;
+}
+
+/* ===========================================
+   Header Styles
+   =========================================== */
+
+.ff-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.ff-sidebar-base h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.ff-icon-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.03);
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.ff-icon-close:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* ===========================================
+   Common Child Styles (passed to children)
+   =========================================== */
+
+.ff-sidebar-base ::ng-deep .ff-section-label {
+  font-size: 0.75rem;
+  color: #3b82f6;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.ff-sidebar-base ::ng-deep .ff-section-label:first-child {
+  margin-top: 0;
+}
+
+.ff-sidebar-base ::ng-deep .ff-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.ff-sidebar-base ::ng-deep .ff-field {
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.ff-sidebar-base ::ng-deep .ff-object-gallery {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.8rem;
+  margin-bottom: 1.5rem;
+}
+
+.ff-sidebar-base ::ng-deep .ff-gallery-item {
+  aspect-ratio: 1;
+  background: #f8fafc;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 8px;
+  color: #64748b;
+}
+
+.ff-sidebar-base ::ng-deep .ff-gallery-item:hover {
+  background: #eff6ff;
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
+  transform: translateY(-2px);
+}
+
+.ff-sidebar-base ::ng-deep .ff-gallery-item.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.ff-sidebar-base ::ng-deep .ff-gallery-preview {
+  width: 100%;
+  height: 100%;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+.ff-sidebar-base ::ng-deep .ff-recent-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.ff-sidebar-base ::ng-deep .ff-color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: transform 0.1s;
+}
+
+.ff-sidebar-base ::ng-deep .ff-color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.ff-sidebar-base ::ng-deep .ff-btn-delete {
+  width: 100%;
+  padding: 0.75rem;
+  background: #fef2f2;
+  color: #ef4444;
+  border: 1px solid #fee2e2;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.ff-sidebar-base ::ng-deep .ff-btn-delete:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+.ff-sidebar-base ::ng-deep .ff-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+.ff-sidebar-base ::ng-deep input[type='color'] {
+  height: 44px;
+  padding: 6px;
+  cursor: pointer;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.ff-sidebar-base ::ng-deep label {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.ff-sidebar-base ::ng-deep input {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  width: 100%;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.ff-sidebar-base ::ng-deep input[readonly] {
+  background: #f1f5f9;
+  cursor: not-allowed;
+  color: #94a3b8;
+}
+
+/* ===========================================
+   Tool Button Styles (for paint-sidebar)
+   =========================================== */
+
+.ff-sidebar-base ::ng-deep .ff-tool-btn {
+  flex: 1;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.ff-sidebar-base ::ng-deep .ff-tool-btn:hover {
+  background: #eff6ff;
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
+}
+
+.ff-sidebar-base ::ng-deep .ff-tool-btn.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.ff-sidebar-base ::ng-deep .ff-switch-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ===========================================
+   Segmented Control Styles (for connection-sidebar)
+   =========================================== */
+
+.ff-sidebar-base ::ng-deep .ff-control-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+  display: block;
+  font-weight: 500;
+}
+
+.ff-sidebar-base ::ng-deep .ff-segmented-control {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+}
+
+.ff-sidebar-base ::ng-deep .ff-segment-btn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ff-sidebar-base ::ng-deep .ff-segment-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: #1e293b;
+}
+
+.ff-sidebar-base ::ng-deep .ff-segment-btn.active {
+  background: #fff;
+  color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  font-weight: 700;
+}

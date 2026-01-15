@@ -1,0 +1,73 @@
+<svg
+      width="170px"
+      height="170px"
+      viewBox="-4.8 -4.8 57.60 57.60"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      transform="rotate(0)"
+      class="relative z-10 drop-shadow-lg"
+    >
+      <g id="SVGRepo_bgCarrier" stroke-width="0" />
+
+      <g
+        id="SVGRepo_tracerCarrier"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke="#CCCCCC"
+        stroke-width="1.44"
+      />
+
+      <g id="SVGRepo_iconCarrier">
+        <rect width="48" height="48" fill-opacity="0.01" />
+        <path d="M48 0H0V48H48V0Z"  fill-opacity="0.01" />
+        <path
+          d="M15.5 9L7 14V24V34L15.5 39L24 44L32.5001 39L41 34V24V14L32.5001 9L24 4L15.5 9Z"
+          stroke="#ffffff"
+          stroke-width="1.8719999999999999"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M24 4L24 24"
+          stroke="#ffffff"
+          stroke-width="1.8719999999999999"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M41 34L24 24"
+          stroke="#ffffff"
+          stroke-width="1.8719999999999999"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M7 34L24 24"
+          stroke="#ffffff"
+          stroke-width="1.8719999999999999"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M24 44V34"
+          stroke="#ffffff"
+          stroke-width="1.8719999999999999"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M41 14L33 19"
+          stroke="#ffffff"
+          stroke-width="1.8719999999999999"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M7 14L15 19"
+          stroke="#ffffff"
+          stroke-width="1.8719999999999999"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </g>
+    </svg>
