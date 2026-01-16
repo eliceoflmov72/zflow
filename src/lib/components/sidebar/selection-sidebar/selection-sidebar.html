@@ -1,7 +1,7 @@
 <sidebar 
-  [title]="'Selección Múltiple (' + gridService.selectedNodeIds().length + ')'" 
+  [title]="'Selección Múltiple (' + selectionService.selectedNodeIds().length + ')'" 
   position="right" 
-  (close)="gridService.setSelection([])"
+  (close)="selectionService.setSelection([])"
 >
   <div class="ff-section-label">Editar Objetos</div>
   <div class="ff-object-gallery" style="display: none;"></div>

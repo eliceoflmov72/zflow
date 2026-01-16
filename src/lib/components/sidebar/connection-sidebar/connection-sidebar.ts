@@ -7,6 +7,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { SelectionService } from '../../../services/selection.service';
 import { GridService } from '../../../services/grid.service';
 import { FossFlowConnection } from '../../../models/fossflow.types';
 import { Sidebar } from '../sidebar';
@@ -19,6 +20,7 @@ import { Sidebar } from '../sidebar';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConnectionSidebar {
+  selectionService = inject(SelectionService);
   gridService = inject(GridService);
 
   @Input({ required: true }) conn!: FossFlowConnection;
@@ -29,4 +31,5 @@ export class ConnectionSidebar {
     updates: Partial<FossFlowConnection>;
   }>();
   @Output() onConnectionColorInput = new EventEmitter<{ event: any; id: string }>();
+  @Output() deleteConnection = new EventEmitter<string>();
 }

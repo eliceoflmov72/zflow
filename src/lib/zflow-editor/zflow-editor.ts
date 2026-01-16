@@ -18,6 +18,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GridService } from '../services/grid.service';
+import { SelectionService } from '../services/selection.service';
+import { HistoryService } from '../services/history.service';
 import { WebGPUEngine } from '../webgpu/engine';
 import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
 import { ModalComponent } from '../components/ui/modal/modal';
@@ -44,7 +46,7 @@ import { PerformanceMonitorComponent } from '../components/performance-monitor/p
     ConnectionSidebar,
     PerformanceMonitorComponent,
   ],
-  providers: [GridService],
+  providers: [GridService, SelectionService, HistoryService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './zflow-editor.html',
   styleUrl: './zflow-editor.css',
@@ -52,6 +54,8 @@ import { PerformanceMonitorComponent } from '../components/performance-monitor/p
 export class ZFlowEditorComponent implements OnInit, OnDestroy {
   @ViewChild('gpuCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
   gridService = inject(GridService);
+  selectionService = inject(SelectionService);
+  historyService = inject(HistoryService);
   private cdr = inject(ChangeDetectorRef);
   private engine = new WebGPUEngine();
   webGpuSupported = signal(true);
@@ -488,6 +492,10 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
     if (value) {
       const currentSize = this.gridService.gridSize();
       if (currentSize.width !== value.width || currentSize.height !== value.height) {
+        // Only push state if there are existing nodes (changing size, not initial init)
+        if (this.gridService.nodes().length > 0) {
+          this.pushState();
+        }
         this.gridService.initializeGrid(value.width, value.height);
       }
     }
@@ -500,7 +508,7 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const selectedId = this.gridService.selectedNodeId();
+      const selectedId = this.selectionService.selectedNodeId();
       if (selectedId) {
         const node = this.gridService.nodes().find((n) => n.id === selectedId);
         this.selectedNode.set(node ? { ...node } : null);
@@ -510,7 +518,7 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
     });
 
     effect(() => {
-      const selectedId = this.gridService.selectedConnectionId();
+      const selectedId = this.selectionService.selectedConnectionId();
       if (selectedId) {
         const conn = this.gridService.connections().find((c) => c.id === selectedId);
         this.selectedConnection.set(conn ? { ...conn } : null);
@@ -589,15 +597,15 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
       case 'Z':
         if (event.ctrlKey || event.metaKey) {
           event.preventDefault();
-          if (event.shiftKey) this.gridService.redo();
-          else this.gridService.undo();
+          if (event.shiftKey) this.redo();
+          else this.undo();
         }
         break;
       case 'y':
       case 'Y':
         if (event.ctrlKey || event.metaKey) {
           event.preventDefault();
-          this.gridService.redo();
+          this.redo();
         }
         break;
       case 'Delete':
@@ -663,7 +671,7 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
       // Returns false if frame was skipped due to adaptive quality (potato mode)
       const rendered = this.engine.render(
         this.gridService.nodes(),
-        this.gridService.selectedNodeId(),
+        this.selectionService.selectedNodeId(),
       );
 
       if (rendered) {
@@ -725,7 +733,10 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
               if (node.floorColor !== updates.floorColor) changed = true;
             }
 
-            if (changed) this.gridService.updateNode(node.id, updates);
+            if (changed) {
+              this.pushState();
+              this.gridService.updateNode(node.id, updates);
+            }
           } else {
             // If node doesn't exist, it means it's outside the initialized grid.
             // We should not create new nodes outside the grid bounds in paint mode.
@@ -761,9 +772,9 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
       if (this.editorMode() === 'select') {
         const isMulti = event.ctrlKey || event.metaKey || event.shiftKey;
         if (node) {
-          this.gridService.selectNode(node.id, isMulti);
+          this.selectionService.selectNode(node.id, isMulti);
         } else {
-          if (!isMulti) this.gridService.selectNode(null);
+          if (!isMulti) this.selectionService.selectNode(null);
         }
       } else if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
         // For click in paint mode, if it's brush, it's already handled by performPaintAt in mousedown.
@@ -788,7 +799,8 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
               // Finalize connection
               if (path.length > 1 || (path.length === 1 && this.connectSourceId() !== node.id)) {
                 const finalPath = isClickingLast ? path : [...path, node.position];
-                this.gridService.addManualConnection(
+                this.pushState();
+                this.gridService.addConnection(
                   this.connectSourceId()!,
                   node.id,
                   true,
@@ -810,7 +822,7 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
         }
       }
     } else {
-      this.gridService.selectNode(null);
+      this.selectionService.selectNode(null);
       this.connectSourceId.set(null);
     }
   }
@@ -987,7 +999,7 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
 
     // If additive, start with existing selection
     if (this.isAdditiveSelection) {
-      selectedIds = [...this.gridService.selectedNodeIds()];
+      selectedIds = [...this.selectionService.selectedNodeIds()];
     }
 
     for (let x = minX; x <= maxX; x++) {
@@ -1002,7 +1014,7 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
     }
 
     // Set selection
-    this.gridService.setSelection(selectedIds);
+    this.selectionService.setSelection(selectedIds);
   }
 
   private applyPaintRectangle() {
@@ -1048,6 +1060,7 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
     }
 
     if (batchUpdates.length > 0) {
+      this.pushState();
       this.gridService.updateManyNodes(batchUpdates);
     }
   }
@@ -1122,6 +1135,7 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
   }
 
   updateNode(id: string, updates: Partial<FossFlowNode>) {
+    this.pushState();
     this.gridService.updateNode(id, updates);
     // The effect in the constructor will automatically update this.selectedNode()
     // when gridService.nodes() changes, but we can do a local set for immediate feedback
@@ -1164,18 +1178,49 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
   }
 
   confirmClear() {
+    this.pushState();
     this.gridService.clearGrid();
     this.showClearConfirm.set(false);
+  }
+
+  pushState() {
+    this.historyService.pushState({
+      nodes: this.gridService.nodes(),
+      connections: this.gridService.connections(),
+    });
+  }
+
+  undo() {
+    const state = this.historyService.undo({
+      nodes: this.gridService.nodes(),
+      connections: this.gridService.connections(),
+    });
+    if (state) {
+      this.gridService.setNodes(state.nodes);
+      this.gridService.setConnections(state.connections);
+    }
+  }
+
+  redo() {
+    const state = this.historyService.redo({
+      nodes: this.gridService.nodes(),
+      connections: this.gridService.connections(),
+    });
+    if (state) {
+      this.gridService.setNodes(state.nodes);
+      this.gridService.setConnections(state.connections);
+    }
   }
 
   // Max connections handler removed as auto-connect is disabled
 
   onConnectionClick(event: MouseEvent, id: string) {
     event.stopPropagation();
-    this.gridService.selectConnection(id);
+    this.selectionService.selectConnection(id);
   }
 
   updateConnection(id: string, updates: Partial<FossFlowConnection>) {
+    this.pushState();
     this.gridService.updateConnection(id, updates);
     if (this.selectedConnection()?.id === id) {
       this.selectedConnection.update((c) => (c ? { ...c, ...updates } : null));
@@ -1187,28 +1232,41 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
     this.updateConnection(id, { color: input.value });
   }
 
+  deleteConnection(id: string) {
+    this.pushState();
+    this.gridService.removeConnection(id);
+    // Clear selection if this was the selected connection
+    if (this.selectionService.selectedConnectionId() === id) {
+      this.selectionService.selectConnection(null);
+    }
+  }
+
   deleteSelected() {
-    if (this.gridService.selectedConnectionId()) {
-      this.gridService.removeConnection(this.gridService.selectedConnectionId()!);
+    if (this.selectionService.selectedConnectionId()) {
+      this.pushState();
+      this.gridService.removeConnection(this.selectionService.selectedConnectionId()!);
+      this.selectionService.selectConnection(null);
     } else {
-      const selectedIds = this.gridService.selectedNodeIds();
+      const selectedIds = this.selectionService.selectedNodeIds();
       if (selectedIds.length > 0) {
         // "Removing" object means setting active=false.
         // We use updateManyNodes.
+        this.pushState();
         const updates = selectedIds.map((id) => ({ id, changes: { active: false } }));
         this.gridService.updateManyNodes(updates);
         // Deselect or keep selected? Usually keep selected so you can undo easily or see they are gone (but they are hidden).
         // If active=false, they disappear from view (except maybe grid).
         // Let's clear selection.
-        this.gridService.setSelection([]);
+        this.selectionService.setSelection([]);
       }
     }
   }
 
   updateSelectedNodes(changes: Partial<FossFlowNode>) {
-    const selectedIds = this.gridService.selectedNodeIds();
+    const selectedIds = this.selectionService.selectedNodeIds();
     if (selectedIds.length === 0) return;
 
+    this.pushState();
     const updates = selectedIds.map((id) => ({ id, changes }));
     this.gridService.updateManyNodes(updates);
   }

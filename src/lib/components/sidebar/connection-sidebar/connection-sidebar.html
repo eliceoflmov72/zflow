@@ -1,4 +1,4 @@
-<sidebar title="Ajustes de Relación" position="right" (close)="gridService.selectConnection(null)">
+<sidebar title="Ajustes de Relación" position="right" (close)="selectionService.selectConnection(null)">
   <div class="ff-section-label">Propiedades</div>
 
   <label class="ff-control-label">Dirección</label>
@@ -70,7 +70,7 @@
   </div>
 
   <div class="ff-section-label">Acciones</div>
-  <button class="ff-btn-delete" (click)="gridService.removeConnection(conn.id)">
+  <button class="ff-btn-delete" (click)="deleteConnection.emit(conn.id)">
     <i class="pi pi-trash"></i> Eliminar Relación
   </button>
 </sidebar>

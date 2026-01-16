@@ -44,7 +44,7 @@
         stroke="currentColor"
         fill="none"
         [attr.stroke-width]="
-          (gridService.selectedConnectionId() === conn.id ? 8 : 5) * conn.scale
+          (selectionService.selectedConnectionId() === conn.id ? 8 : 5) * conn.scale
         "
         [attr.stroke-dasharray]="
           conn.lineType === 'dashed' ? 12 * conn.scale + ',' + 10 * conn.scale : ''
@@ -52,12 +52,12 @@
         stroke-linecap="round"
         stroke-linejoin="round"
         class="ff-connection-line"
-        [class.ff-conn-selected]="gridService.selectedConnectionId() === conn.id"
+        [class.ff-conn-selected]="selectionService.selectedConnectionId() === conn.id"
         style="pointer-events: none;"
       />
 
       <!-- Drag Handles -->
-      @if (gridService.selectedConnectionId() === conn.id && !isDraggingEndpoint) {
+      @if (selectionService.selectedConnectionId() === conn.id && !isDraggingEndpoint) {
         <circle
           [attr.cx]="conn.firstPoint.x"
           [attr.cy]="conn.firstPoint.y"
@@ -131,7 +131,7 @@
         [style.width.px]="100 * node.scale"
         [style.height.px]="100 * node.scale"
         [style.z-index]="node.zIndex"
-        [class.ff-object-selected]="gridService.selectedNodeIds().includes(node.id)"
+        [class.ff-object-selected]="selectionService.selectedNodeIds().includes(node.id)"
         [class.ff-object-source]="connectSourceId() === node.id"
         [class.is-node-hovered]="hoveredNodeId() === node.id"
         [class.ff-node-valid-target]="
@@ -197,6 +197,8 @@
       [currentLineType]="currentLineType"
       [isFullscreen]="isFullscreen"
       [showClearConfirm]="showClearConfirm"
+      [undo]="undo.bind(this)"
+      [redo]="redo.bind(this)"
     />
 
     <!-- ZOOM MENU BOTTOM RIGHT -->
@@ -220,7 +222,7 @@
     }
 
     <!-- SIDEBAR -->
-    @if (gridService.selectedNodeIds().length > 1) {
+    @if (selectionService.selectedNodeIds().length > 1) {
       <!-- MULTI SELECTION SIDEBAR -->
       <selection-sidebar
         [availableSvgs]="availableSvgs"
@@ -266,6 +268,7 @@
         [getAllowedDirection]="getAllowedDirection"
         (updateConnection)="updateConnection($event.id, $event.updates)"
         (onConnectionColorInput)="onConnectionColorInput($event.event, $event.id)"
+        (deleteConnection)="deleteConnection($event)"
       />
     }
 

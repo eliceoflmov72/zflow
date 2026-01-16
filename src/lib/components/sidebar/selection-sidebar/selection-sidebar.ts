@@ -8,7 +8,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { GridService } from '../../../services/grid.service';
+import { SelectionService } from '../../../services/selection.service';
 import { FossFlowNode } from '../../../models/fossflow.types';
 import { Sidebar } from '../sidebar';
 import { VisualObjectsTab } from '../../visual-objects-tab/visual-objects-tab';
@@ -21,7 +21,7 @@ import { VisualObjectsTab } from '../../visual-objects-tab/visual-objects-tab';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SelectionSidebar {
-  gridService = inject(GridService);
+  selectionService = inject(SelectionService);
 
   @Input({ required: true }) availableSvgs!: Signal<string[]>;
   @Input({ required: true }) recentColors!: Signal<string[]>;
