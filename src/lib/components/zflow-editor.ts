@@ -30,7 +30,7 @@ import { ConnectionSidebar } from './sidebar/connection-sidebar/connection-sideb
 import { PerformanceMonitorComponent } from './performance-monitor/performance-monitor';
 
 @Component({
-  selector: 'fossflow-editor',
+  selector: 'zflow-editor',
   standalone: true,
   imports: [
     CommonModule,
@@ -626,7 +626,7 @@ import { PerformanceMonitorComponent } from './performance-monitor/performance-m
     `,
   ],
 })
-export class FossflowEditorComponent implements OnInit, OnDestroy {
+export class ZFlowEditorComponent implements OnInit, OnDestroy {
   @ViewChild('gpuCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
   gridService = inject(GridService);
   private cdr = inject(ChangeDetectorRef);
@@ -1956,4 +1956,4 @@ export class FossflowEditorComponent implements OnInit, OnDestroy {
   }
 }
 
-export { FossflowEditorComponent as ZflowEditorComponent };
+export { ZFlowEditorComponent as ZflowEditorComponent };
