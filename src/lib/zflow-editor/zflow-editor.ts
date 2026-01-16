@@ -51,7 +51,7 @@ import { PerformanceMonitorComponent } from '../components/performance-monitor/p
   templateUrl: './zflow-editor.html',
   styleUrl: './zflow-editor.css',
 })
-export class ZFlowEditorComponent implements OnInit, OnDestroy {
+export class ZFlowEditor implements OnInit, OnDestroy {
   @ViewChild('gpuCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
   gridService = inject(GridService);
   selectionService = inject(SelectionService);
@@ -1437,4 +1437,4 @@ export class ZFlowEditorComponent implements OnInit, OnDestroy {
   }
 }
 
-export { ZFlowEditorComponent as ZflowEditorComponent };
+export { ZFlowEditor as ZflowEditor };
