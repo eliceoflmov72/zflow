@@ -8,18 +8,19 @@ import { Tab } from '../ui/tabs/tab';
   standalone: true,
   imports: [CommonModule, Tabs, Tab],
   template: `
-    <ff-tabs>
-      <ff-tab label="Formas" id="forms">
+    <tabs>
+      <tab label="Formas" id="forms">
         <div class="ff-object-gallery">
-          <div
-            class="ff-gallery-item"
-            [class.active]="!currentShape && allowClear"
-            (click)="selectShape.emit(null)"
-            title="Sin Objeto"
-            *ngIf="allowClear"
-          >
-            <i class="pi pi-ban"></i>
-          </div>
+          @if (allowClear) {
+            <div
+              class="ff-gallery-item"
+              [class.active]="!currentShape && allowClear"
+              (click)="selectShape.emit(null)"
+              title="Sin Objeto"
+            >
+              <i class="pi pi-ban"></i>
+            </div>
+          }
           @for (svg of availableForms(); track svg) {
             <div
               class="ff-gallery-item"
@@ -34,9 +35,9 @@ import { Tab } from '../ui/tabs/tab';
             </div>
           }
         </div>
-      </ff-tab>
+      </tab>
 
-      <ff-tab label="Imágenes" id="images">
+      <tab label="Imágenes" id="images">
         <div class="ff-object-gallery">
           <!-- No clear button needed here if it's already in the first tab, but maybe consistent? -->
           <!-- For now, assuming clear is global or primarily in Forms tab -->
@@ -54,8 +55,8 @@ import { Tab } from '../ui/tabs/tab';
             </div>
           }
         </div>
-      </ff-tab>
-    </ff-tabs>
+      </tab>
+    </tabs>
   `,
   styles: [
     `

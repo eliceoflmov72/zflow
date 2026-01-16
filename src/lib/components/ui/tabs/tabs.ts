@@ -13,43 +13,43 @@ import { Tab } from './tab';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'ff-tabs',
+  selector: 'tabs',
   standalone: true,
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="ff-tabs-container">
-      <div class="ff-tabs-header">
+    <div class="tabs-container">
+      <div class="tabs-header">
         @for (tab of tabs; track tab.id) {
           <button
-            class="ff-tab-btn"
+            class="tab-btn"
             [class.active]="activeTabId() === tab.id"
             (click)="selectTab(tab)"
           >
             {{ tab.label }}
             @if (activeTabId() === tab.id) {
-              <div class="active-indicator" layoutId="indicator"></div>
+              <div class="active-indicator"></div>
             }
           </button>
         }
       </div>
-      <div class="ff-tabs-content">
+      <div class="tabs-content">
         <ng-content></ng-content>
       </div>
     </div>
   `,
   styles: [
     `
-      .ff-tabs-container {
+      .tabs-container {
         width: 100%;
       }
-      .ff-tabs-header {
+      .tabs-header {
         display: flex;
         gap: 1rem;
         border-bottom: 1px solid #e2e8f0;
         margin-bottom: 0.5rem;
       }
-      .ff-tab-btn {
+      .tab-btn {
         background: none;
         border: none;
         padding: 0.75rem 0.5rem;
@@ -60,10 +60,10 @@ import { CommonModule } from '@angular/common';
         position: relative;
         transition: color 0.2s;
       }
-      .ff-tab-btn:hover {
+      .tab-btn:hover {
         color: #1e293b;
       }
-      .ff-tab-btn.active {
+      .tab-btn.active {
         color: #3b82f6;
         font-weight: 600;
       }
@@ -80,7 +80,7 @@ import { CommonModule } from '@angular/common';
   ],
 })
 export class Tabs implements AfterContentInit {
-  @ContentChildren(Tab) tabs!: QueryList<Tab>;
+  @ContentChildren(Tab, { descendants: true }) tabs!: QueryList<Tab>;
   activeTabId = signal<string>('');
 
   ngAfterContentInit() {

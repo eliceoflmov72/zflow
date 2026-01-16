@@ -2,11 +2,11 @@ import { Component, Input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'ff-tab',
+  selector: 'tab',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div [class.hidden]="!active()" class="ff-tab-pane">
+    <div [class.hidden]="!active()" class="tab-pane">
       <ng-content></ng-content>
     </div>
   `,
@@ -15,7 +15,7 @@ import { CommonModule } from '@angular/common';
       .hidden {
         display: none;
       }
-      .ff-tab-pane {
+      .tab-pane {
         padding-top: 1rem;
         animation: fadeIn 0.2s ease;
       }
