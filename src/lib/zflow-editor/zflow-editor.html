@@ -1,0 +1,284 @@
+<div
+  class="ff-container light-mode"
+  [class.mode-pan]="editorMode() === 'pan'"
+  (contextmenu)="$event.preventDefault()"
+>
+  <canvas
+    #gpuCanvas
+    (mousedown)="onMouseDown($event)"
+    (wheel)="onWheel($event)"
+    (click)="onClick($event)"
+  ></canvas>
+
+  <!-- Connections Layer -->
+  <svg class="ff-connections-overlay">
+    <defs></defs>
+    <!-- Active drawing path (Moved outside loop) -->
+    @if (activePath().length > 0) {
+      <path
+        [attr.d]="activePathData()"
+        fill="none"
+        stroke="#3b82f6"
+        stroke-width="5"
+        [attr.stroke-dasharray]="currentLineType() === 'dashed' ? '5,5' : ''"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        style="pointer-events: none;"
+      />
+    }
+
+    @for (conn of positionedConnections(); track conn.id) {
+      <!-- Hidden wider hit area -->
+      <path
+        [attr.d]="conn.pathData || 'M ' + conn.points.split(' ').join(' L ')"
+        fill="none"
+        stroke="transparent"
+        [attr.stroke-width]="25 * conn.scale"
+        style="cursor: pointer; pointer-events: stroke;"
+        (click)="onConnectionClick($event, conn.id)"
+      />
+      <!-- Visible Line -->
+      <path
+        [attr.d]="conn.pathData || 'M ' + conn.points.split(' ').join(' L ')"
+        [style.color]="conn.color"
+        stroke="currentColor"
+        fill="none"
+        [attr.stroke-width]="
+          (gridService.selectedConnectionId() === conn.id ? 8 : 5) * conn.scale
+        "
+        [attr.stroke-dasharray]="
+          conn.lineType === 'dashed' ? 12 * conn.scale + ',' + 10 * conn.scale : ''
+        "
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="ff-connection-line"
+        [class.ff-conn-selected]="gridService.selectedConnectionId() === conn.id"
+        style="pointer-events: none;"
+      />
+
+      <!-- Drag Handles -->
+      @if (gridService.selectedConnectionId() === conn.id && !isDraggingEndpoint) {
+        <circle
+          [attr.cx]="conn.firstPoint.x"
+          [attr.cy]="conn.firstPoint.y"
+          r="6"
+          fill="white"
+          stroke="#3b82f6"
+          stroke-width="2"
+          style="cursor: pointer; pointer-events: auto;"
+          (mousedown)="onHandleMouseDown($event, conn.id, 'start')"
+        />
+        <circle
+          [attr.cx]="conn.lastPoint.x"
+          [attr.cy]="conn.lastPoint.y"
+          r="6"
+          fill="white"
+          stroke="#3b82f6"
+          stroke-width="2"
+          style="cursor: pointer; pointer-events: auto;"
+          (mousedown)="onHandleMouseDown($event, conn.id, 'end')"
+        />
+      }
+
+      <!-- Dragging Feedback -->
+      @if (isDraggingEndpoint && draggedConnectionId === conn.id) {
+        <line
+          [attr.x1]="draggedEndpointType === 'start' ? lastMousePos.x : conn.firstPoint.x"
+          [attr.y1]="draggedEndpointType === 'start' ? lastMousePos.y : conn.firstPoint.y"
+          [attr.x2]="draggedEndpointType === 'end' ? lastMousePos.x : conn.lastPoint.x"
+          [attr.y2]="draggedEndpointType === 'end' ? lastMousePos.y : conn.lastPoint.y"
+          stroke="#3b82f6"
+          stroke-width="2"
+          stroke-dasharray="5,5"
+          style="pointer-events: none;"
+        />
+        <circle
+          [attr.cx]="lastMousePos.x"
+          [attr.cy]="lastMousePos.y"
+          r="6"
+          fill="#3b82f6"
+          stroke="white"
+          stroke-width="2"
+          style="pointer-events: none;"
+        />
+      }
+
+      @if (conn.directed && conn.arrowPoints) {
+        <polygon
+          [attr.points]="conn.arrowPoints"
+          [style.fill]="conn.color"
+          style="pointer-events: none;"
+        />
+      }
+      @if (conn.directed && conn.arrowPointsStart) {
+        <polygon
+          [attr.points]="conn.arrowPointsStart"
+          [style.fill]="conn.color"
+          style="pointer-events: none;"
+        />
+      }
+    }
+  </svg>
+
+  <!-- SVG/Image Overlays for objects -->
+  <div class="ff-objects-overlay">
+    @for (node of positionedNodes(); track node.id) {
+      <div
+        class="ff-object-container"
+        [style.transform]="
+          'translate3d(' + node.screenX + 'px, ' + node.screenY + 'px, 0) translate(-50%, -85%)'
+        "
+        [style.width.px]="100 * node.scale"
+        [style.height.px]="100 * node.scale"
+        [style.z-index]="node.zIndex"
+        [class.ff-object-selected]="gridService.selectedNodeIds().includes(node.id)"
+        [class.ff-object-source]="connectSourceId() === node.id"
+        [class.is-node-hovered]="hoveredNodeId() === node.id"
+        [class.ff-node-valid-target]="
+          hoveredNodeId() === node.id &&
+          editorMode() === 'connect' &&
+          connectSourceId() !== node.id
+        "
+      >
+        <div class="ff-node-content"></div>
+        <div
+          class="ff-object-mask"
+          [style.background-color]="
+            node.shape3D && node.shape3D.indexOf('.png') !== -1 ? 'transparent' : node.color
+          "
+          [style.background-image]="
+            node.shape3D && node.shape3D.indexOf('.png') !== -1
+              ? 'url(/images/' + node.shape3D + ')'
+              : 'none'
+          "
+          [style.background-size]="'contain'"
+          [style.background-repeat]="'no-repeat'"
+          [style.background-position]="'center bottom'"
+          [style.mask-image]="
+            node.lod === 'low' || (node.shape3D && node.shape3D.indexOf('.png') !== -1)
+              ? 'none'
+              : 'url(/forms/' + (node.shape3D || 'isometric-cube.svg') + ')'
+          "
+          [style.-webkit-mask-image]="
+            node.lod === 'low' || (node.shape3D && node.shape3D.indexOf('.png') !== -1)
+              ? 'none'
+              : 'url(/forms/' + (node.shape3D || 'isometric-cube.svg') + ')'
+          "
+          [style.border-radius]="node.lod === 'low' ? '4px' : '0'"
+          [style.opacity]="node.lod === 'low' ? '0.7' : '1'"
+        ></div>
+      </div>
+    }
+  </div>
+
+  <!-- Paint Preview Overlay -->
+  @for (p of paintPreviewNodes(); track $index) {
+    <div
+      class="ff-node-plate preview-plate"
+      [style.left.px]="p.x"
+      [style.top.px]="p.y"
+      [style.width.px]="15 * p.scale"
+      [style.height.px]="15 * p.scale"
+      [style.z-index]="p.zIndex"
+    ></div>
+  }
+
+  @if (!webGpuSupported()) {
+    <div class="ff-error">
+      <p>WebGPU is not supported in your browser.</p>
+    </div>
+  }
+
+  <div class="ff-ui-overlay">
+    <!-- TOP TOOLBAR -->
+    <top-toolbar
+      [editorMode]="editorMode"
+      [connectionStyle]="connectionStyle"
+      [currentLineType]="currentLineType"
+      [isFullscreen]="isFullscreen"
+      [showClearConfirm]="showClearConfirm"
+    />
+
+    <!-- ZOOM MENU BOTTOM RIGHT -->
+    <bottom-toolbar
+      [currentRotationLabel]="currentRotationLabel"
+      [zoomLabel]="zoomLabel"
+      (rotateLeft)="rotateLeft()"
+      (rotateRight)="rotateRight()"
+      (zoomOut)="zoomOut()"
+      (zoomIn)="zoomIn()"
+      (resetView)="resetView()"
+    />
+
+    <!-- PERFORMANCE INDICATOR (Dev Mode) -->
+    @if (showPerformanceStats()) {
+      <performance-monitor
+        [currentFps]="currentFps"
+        [currentQualityLevel]="currentQualityLevel"
+        [visibleNodesCount]="visibleNodesCount"
+      />
+    }
+
+    <!-- SIDEBAR -->
+    @if (gridService.selectedNodeIds().length > 1) {
+      <!-- MULTI SELECTION SIDEBAR -->
+      <selection-sidebar
+        [availableSvgs]="availableSvgs"
+        [recentColors]="recentColors"
+        (updateSelectedNodes)="updateSelectedNodes($event)"
+        (deleteSelected)="deleteSelected()"
+      />
+    } @else if (selectedNode(); as node) {
+      <node-sidebar
+        [node]="node"
+        [availableSvgs]="availableSvgs"
+        [recentColors]="recentColors"
+        (removeObject)="removeObject($event)"
+        (selectObject)="selectObject($event.svg, $event.node)"
+        (onObjectColorInput)="onObjectColorInput($event.event, $event.node)"
+        (onFloorColorInput)="onFloorColorInput($event.event, $event.node)"
+        (applyRecentColorToObject)="applyRecentColorToObject($event.color, $event.node)"
+        (applyRecentColorToFloor)="applyRecentColorToFloor($event.color, $event.node)"
+        (deleteSelected)="deleteSelected()"
+      />
+    } @else if (
+      !selectedNode() &&
+      !selectedConnection() &&
+      (editorMode() === 'paint' || editorMode() === 'paint-floor')
+    ) {
+      <!-- BRUSH SIDEBAR -->
+      <paint-sidebar
+        [paintTool]="paintTool"
+        [paintObjectEnabled]="paintObjectEnabled"
+        [paintFloorEnabled]="paintFloorEnabled"
+        [brushShape]="brushShape"
+        [brushObjectColor]="brushObjectColor"
+        [brushFloorColor]="brushFloorColor"
+        [availableSvgs]="availableSvgs"
+        [recentColors]="recentColors"
+      />
+    }
+
+    <!-- CONNECTION SIDEBAR -->
+    @if (selectedConnection(); as conn) {
+      <connection-sidebar
+        [conn]="conn"
+        [getAllowedDirection]="getAllowedDirection"
+        (updateConnection)="updateConnection($event.id, $event.updates)"
+        (onConnectionColorInput)="onConnectionColorInput($event.event, $event.id)"
+      />
+    }
+
+    <!-- CLEAR CONFIRM MODAL -->
+    <modal
+      [isOpen]="showClearConfirm()"
+      title="¿Limpiar Diagrama?"
+      description="Esta acción eliminará todos los objetos y conexiones de forma permanente. ¿Deseas continuar?"
+      confirmButtonText="Sí, Limpiar Todo"
+      cancelButtonText="Cancelar"
+      confirmButtonType="danger"
+      (confirmAction)="confirmClear()"
+      (closeAction)="showClearConfirm.set(false)"
+    />
+  </div>
+</div>

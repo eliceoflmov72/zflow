@@ -1,0 +1,289 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.ff-container.light-mode {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #e5eaf1; /* Specific Light Blue-Gray requested */
+}
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: default;
+}
+.mode-pan canvas {
+  cursor: grab;
+}
+.mode-pan canvas:active {
+  cursor: grabbing;
+}
+.ff-connections-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+.ff-connection-line {
+  opacity: 0.8;
+  pointer-events: none;
+}
+.ff-conn-selected {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+.ff-btn-delete {
+  width: 100%;
+  background: #fef2f2;
+  color: #ef4444;
+  border: 1px solid #fee2e2;
+  padding: 0.75rem;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  margin-top: 1rem;
+}
+.ff-btn-delete:hover {
+  background: #fee2e2;
+  transform: translateY(-1px);
+}
+.ff-switch-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  cursor: pointer;
+}
+.ff-objects-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+.ff-ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+.ff-object-container {
+  position: absolute;
+  transform: translate(-50%, -85%);
+  will-change: transform;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 15px 40px rgba(0, 0, 0, 0.25));
+}
+.ff-object-selected {
+  filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.8))
+    drop-shadow(0 15px 40px rgba(0, 0, 0, 0.25)) !important;
+  transform: translate(-50%, -105%) scale(1.1);
+  z-index: 1001 !important;
+}
+.ff-object-source {
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 1))
+    drop-shadow(0 15px 40px rgba(0, 0, 0, 0.4)) !important;
+  transform: translate(-50%, -100%) scale(1.1);
+  z-index: 1001 !important;
+}
+.ff-node-hover {
+  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.6)) !important;
+  transform: translate(-50%, -95%);
+}
+.ff-node-valid-target {
+  filter: drop-shadow(0 0 15px rgba(34, 197, 94, 0.8)) !important; /* Green glow */
+  cursor: crosshair;
+  transform: translate(-50%, -100%) scale(1.05);
+}
+.ff-object-mask {
+  width: 100%;
+  height: 100%;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: bottom center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: bottom center;
+  transition: background-color 0.1s ease;
+}
+.ff-object-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.ff-gallery-item {
+  aspect-ratio: 1;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0.5rem;
+  color: #64748b;
+}
+.ff-gallery-item:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  transform: translateY(-2px);
+}
+.ff-gallery-item.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #3b82f6;
+}
+/* Removed .ff-toolbar styles (moved to toolbar.css) */
+/* Removed .ff-zoom-menu styles (moved to zoom-menu.css) */
+.ff-mode-toggle {
+  display: flex;
+  gap: 0.3rem;
+}
+.ff-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: rgba(0, 0, 0, 0.1);
+}
+.ff-grid-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.ff-toolbar button {
+  background: transparent;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+.ff-toolbar button.active {
+  background: transparent !important;
+  color: #3b82f6 !important;
+  box-shadow: none !important;
+}
+
+.ff-btn-delete:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+}
+.ff-btn-delete i {
+  font-size: 1rem;
+}
+.ff-debug-hint {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+.ff-object-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.ff-gallery-item {
+  aspect-ratio: 1;
+  background: #f8fafc;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  padding: 8px;
+  color: #64748b;
+}
+.ff-gallery-item:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  color: #1e293b;
+}
+.ff-gallery-preview {
+  width: 100%;
+  height: 100%;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+.ff-btn-clear {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ff-btn-clear:hover {
+  background: #fef2f2;
+  color: #ef4444;
+}
+.ff-btn-clear:hover {
+  background: #fef2f2;
+  color: #ef4444;
+}
+.ff-node-plate {
+  position: absolute;
+  transform: translate(-50%, -85%);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(59, 130, 246, 0.2); /* Light blue for preview */
+  border: 1px dashed #3b82f6;
+  border-radius: 4px;
+}
+.preview-plate {
+  background-color: rgba(59, 130, 246, 0.2);
+  border: 1px dashed #3b82f6;
+}
+.selection-plate {
+  background-color: rgba(250, 204, 21, 0.2); /* Yellow for selection */
+  border: 1px solid #eab308;
+}
+/* ==================== PERFORMANCE STATS ==================== */
+/* Moved performance monitor styles */

@@ -4,7 +4,7 @@
 
 export * from './lib/models/fossflow.types';
 export * from './lib/services/grid.service';
-export * from './lib/components/zflow-editor';
+export * from './lib/zflow-editor/zflow-editor';
 export * from './lib/components/toolbar/toolbar';
 export * from './lib/components/toolbar/top-toolbar/top-toolbar';
 export * from './lib/components/toolbar/bottom-toolbar/bottom-toolbar';
