@@ -6,7 +6,8 @@
   },
   "peerDependencies": {
     "@angular/common": "^21.0.0",
-    "@angular/core": "^21.0.0"
+    "@angular/core": "^21.0.0",
+    "seshat-components": "0.0.1"
   },
   "dependencies": {
     "tslib": "^2.3.0"

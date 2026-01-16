@@ -20,7 +20,7 @@ import { FormsModule } from '@angular/forms';
 import { GridService } from '../services/grid.service';
 import { WebGPUEngine } from '../webgpu/engine';
 import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
-import { ModalComponent } from 'seshat-components';
+import { ModalComponent } from './ui/modal/modal';
 import { BottomToolbar } from './toolbar/bottom-toolbar/bottom-toolbar';
 import { TopToolbar } from './toolbar/top-toolbar/top-toolbar';
 import { SelectionSidebar } from './sidebar/selection-sidebar/selection-sidebar';
