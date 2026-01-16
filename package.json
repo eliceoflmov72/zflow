@@ -2,7 +2,8 @@
   "name": "zflow",
   "version": "0.0.1",
   "scripts": {
-    "build": "cd ../.. && ng build zflow"
+    "build": "cd ../.. && ng build zflow",
+    "watch": "cd ../.. && ng build zflow --watch --configuration development"
   },
   "peerDependencies": {
     "@angular/common": "^21.0.0",
