@@ -15,5 +15,10 @@
   "devDependencies": {
     "@webgpu/types": "^0.1.69"
   },
+  "files": [
+    "dist",
+    "public",
+    "README.md"
+  ],
   "sideEffects": false
 }
