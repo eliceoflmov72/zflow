@@ -753,6 +753,9 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   }
 
   onClick(event: MouseEvent) {
+    // Ignore clicks when modal is open
+    if (this.showClearConfirm()) return;
+    
     if (this.editorMode() === 'pan') return;
 
     const duration = Date.now() - this.mouseDownTime;
@@ -830,6 +833,9 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   }
 
   onMouseDown(event: MouseEvent) {
+    // Ignore mouse events when modal is open
+    if (this.showClearConfirm()) return;
+    
     this.mouseDownTime = Date.now();
     this.lastMousePos = { x: event.clientX, y: event.clientY };
     if (
@@ -1183,6 +1189,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     this.pushState();
     this.gridService.clearGrid();
     this.showClearConfirm.set(false);
+    this.cdr.detectChanges();
   }
 
   pushState() {

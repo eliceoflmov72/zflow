@@ -7,8 +7,8 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     @if (isOpen) {
-      <div class="zmodal-backdrop" (click)="onCancel()"></div>
-      <div class="zmodal">
+      <div class="zmodal-backdrop" (click)="onCancel()" (mousedown)="$event.stopPropagation()"></div>
+      <div class="zmodal" (click)="$event.stopPropagation()" (mousedown)="$event.stopPropagation()">
         <div class="zmodal-header">
           <h3 class="zmodal-title">{{ title }}</h3>
         </div>
@@ -16,7 +16,7 @@ import { CommonModule } from '@angular/common';
           <p class="zmodal-description">{{ description }}</p>
         </div>
         <div class="zmodal-footer">
-          <button class="zbtn zbtn-secondary" type="button" (click)="onCancel()">
+          <button class="zbtn zbtn-secondary" type="button" (click)="onCancel(); $event.stopPropagation()">
             {{ cancelButtonText || 'Cancelar' }}
           </button>
           <button
@@ -26,7 +26,7 @@ import { CommonModule } from '@angular/common';
             [class.zbtn-success]="confirmButtonType === 'success'"
             [class.zbtn-warning]="confirmButtonType === 'warning'"
             type="button"
-            (click)="onConfirm()"
+            (click)="onConfirm(); $event.stopPropagation()"
           >
             {{ confirmButtonText || 'Confirmar' }}
           </button>
@@ -37,25 +37,27 @@ import { CommonModule } from '@angular/common';
   styles: [
     `
       .zmodal-backdrop {
-        position: fixed;
+        position: absolute;
         inset: 0;
         background: rgba(15, 23, 42, 0.45);
         z-index: 1000;
+        pointer-events: auto;
       }
       .zmodal {
-        position: fixed;
+        position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         background: #fff;
         width: 520px;
-        max-width: calc(100vw - 2rem);
+        max-width: calc(100% - 2rem);
         border-radius: 12px;
         box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
         z-index: 1001;
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        pointer-events: auto;
       }
       .zmodal-header {
         padding: 1rem 1.25rem;
