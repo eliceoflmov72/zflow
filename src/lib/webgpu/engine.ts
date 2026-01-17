@@ -1,3 +1,5 @@
+/// <reference types="@webgpu/types" />
+
 import { Mat4 } from './math-utils';
 import { Camera } from './camera';
 import { FossFlowNode } from '../models/fossflow.types';

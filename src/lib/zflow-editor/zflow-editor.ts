@@ -20,6 +20,8 @@ import { FormsModule } from '@angular/forms';
 import { GridService } from '../services/grid.service';
 import { SelectionService } from '../services/selection.service';
 import { HistoryService } from '../services/history.service';
+import { StorageService } from '../services/storage.service';
+import { ConnectionService } from '../services/connection.service';
 import { WebGPUEngine } from '../webgpu/engine';
 import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
 import { ModalComponent } from '../components/ui/modal/modal';
@@ -46,7 +48,7 @@ import { PerformanceMonitorComponent } from '../components/performance-monitor/p
     ConnectionSidebar,
     PerformanceMonitorComponent,
   ],
-  providers: [GridService, SelectionService, HistoryService],
+  providers: [GridService, SelectionService, HistoryService, StorageService, ConnectionService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './zflow-editor.html',
   styleUrl: './zflow-editor.css',
