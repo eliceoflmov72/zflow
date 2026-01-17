@@ -475,6 +475,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   });
 
   private animationFrameId: number | null = null;
+  private resizeObserver: ResizeObserver | null = null;
   private isDragging = false;
   protected lastMousePos = { x: 0, y: 0 };
   private mouseDownTime = 0;
@@ -553,6 +554,16 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     if (success) {
       this.resetView();
       this.handleResize();
+
+      const parent = this.canvasRef.nativeElement?.parentElement;
+      if (parent) {
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = new ResizeObserver(() => {
+          this.handleResize();
+        });
+        this.resizeObserver.observe(parent);
+      }
+
       // Optimization: Rely on @HostListener for resize to avoid duplicate listeners
       this.startRenderLoop();
     }
@@ -560,6 +571,8 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.animationFrameId !== null) cancelAnimationFrame(this.animationFrameId);
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
     this.engine.destroy();
   }
 
@@ -647,7 +660,14 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
   @HostListener('document:fullscreenchange')
   onFullscreenChange() {
-    this.isFullscreen.set(!!document.fullscreenElement);
+    // Check both browser fullscreen and our custom fullscreen mode
+    const editorContainer = document.querySelector('zflow-editor .ff-container');
+    if (editorContainer && !document.fullscreenElement) {
+      editorContainer.classList.remove('fullscreen-mode');
+    }
+    const isCustomFullscreen = editorContainer?.classList.contains('fullscreen-mode') || false;
+    this.isFullscreen.set(!!document.fullscreenElement || isCustomFullscreen);
+    setTimeout(() => this.handleResize(), 0);
   }
 
   private handleResize = () => {

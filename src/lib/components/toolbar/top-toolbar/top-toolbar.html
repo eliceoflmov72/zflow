@@ -67,6 +67,6 @@
   </button>
   <div class="ff-divider"></div>
   <button (click)="toggleFullscreen()" title="Pantalla Completa">
-    <i [class]="isFullscreen() ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"></i>
+    <i [class]="getFullscreenIcon()"></i>
   </button>
 </toolbar>
