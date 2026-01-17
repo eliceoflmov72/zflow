@@ -5,6 +5,18 @@ import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
 export class ConnectionService {
   constructor() {}
 
+  private debugEnabled = false;
+
+  setDebugEnabled(enabled: boolean) {
+    this.debugEnabled = enabled;
+  }
+
+  private debugLog(message: string, data?: unknown) {
+    if (!this.debugEnabled) return;
+    if (data !== undefined) console.debug(`[zflow][connection] ${message}`, data);
+    else console.debug(`[zflow][connection] ${message}`);
+  }
+
   /**
    * Check if a tile is occupied by a connection path
    */
@@ -56,17 +68,97 @@ export class ConnectionService {
     customPath?: { x: number; y: number }[],
     style: 'straight' | 'rounded' = 'straight',
     lineType: 'solid' | 'dashed' = 'solid',
+    color?: string,
+    direction?: 'forward' | 'reverse' | 'bi',
   ): FossFlowConnection {
+    if (!fromId || !toId || fromId === toId) {
+      this.debugLog('createConnection: invalid endpoints', { fromId, toId });
+      const id = `manual-${Math.random().toString(36).substr(2, 9)}`;
+      return {
+        id,
+        fromId,
+        toId,
+        directed,
+        direction,
+        color: color || '#3b82f6',
+        path: customPath,
+        style,
+        lineType,
+      };
+    }
+
     const id = `manual-${Math.random().toString(36).substr(2, 9)}`;
     const fromNode = nodes.find((n) => n.id === fromId);
     const toNode = nodes.find((n) => n.id === toId);
 
-    let path = customPath;
-    if (!path && fromNode && toNode) {
-      path = this.findPath(fromNode, toNode, nodes, gridSize) || undefined;
+    let path = customPath ? customPath.map((p) => ({ ...p })) : undefined;
+    if (fromNode && toNode) {
+      if (!path) {
+        path = this.findPath(fromNode, toNode, nodes, gridSize) || undefined;
+      }
     }
 
-    return { id, fromId, toId, directed, color: '#3b82f6', path, style, lineType };
+    return {
+      id,
+      fromId,
+      toId,
+      directed,
+      direction,
+      color: color || '#3b82f6',
+      path,
+      style,
+      lineType,
+    };
+  }
+
+  pathCollidesWithNodes(
+    path: { x: number; y: number }[],
+    nodes: FossFlowNode[],
+    fromId: string,
+    toId: string,
+  ): boolean {
+    if (path.length < 3) return false;
+    const nodeByTile = new Map<string, string>();
+    for (const n of nodes) {
+      if (!n.active) continue;
+      nodeByTile.set(`${n.position.x},${n.position.y}`, n.id);
+    }
+
+    for (let i = 1; i < path.length - 1; i++) {
+      const p = path[i];
+      const idAtTile = nodeByTile.get(`${p.x},${p.y}`);
+      if (idAtTile && idAtTile !== fromId && idAtTile !== toId) return true;
+    }
+    return false;
+  }
+
+  private routeThroughWaypoints(
+    waypoints: { x: number; y: number }[],
+    nodes: FossFlowNode[],
+    gridSize: { width: number; height: number },
+    fromId: string,
+    toId: string,
+  ): { x: number; y: number }[] | null {
+    if (waypoints.length < 2) return null;
+
+    let result: { x: number; y: number }[] = [];
+    for (let i = 0; i < waypoints.length - 1; i++) {
+      const start = waypoints[i];
+      const end = waypoints[i + 1];
+      const seg = this.findPathBetweenPositions(start, end, nodes, gridSize, fromId, toId);
+      if (!seg || seg.length === 0) return null;
+
+      // Stitch segments: avoid duplicating the joint point
+      if (i === 0) result = seg;
+      else result = [...result, ...seg.slice(1)];
+    }
+
+    if (this.pathCollidesWithNodes(result, nodes, fromId, toId)) {
+      this.debugLog('routeThroughWaypoints: routed path still collides', { fromId, toId });
+      return null;
+    }
+
+    return result;
   }
 
   /**
@@ -80,6 +172,17 @@ export class ConnectionService {
   ): { x: number; y: number }[] | null {
     const start = from.position;
     const end = to.position;
+    return this.findPathBetweenPositions(start, end, nodes, gridSize, from.id, to.id);
+  }
+
+  private findPathBetweenPositions(
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+    nodes: FossFlowNode[],
+    gridSize: { width: number; height: number },
+    fromId: string,
+    toId: string,
+  ): { x: number; y: number }[] | null {
     const openSet: { x: number; y: number; g: number; f: number; parent: any }[] = [];
     const closedSet = new Set<string>();
 
@@ -117,8 +220,8 @@ export class ConnectionService {
             n.active &&
             n.position.x === neighbor.x &&
             n.position.y === neighbor.y &&
-            n.id !== from.id &&
-            n.id !== to.id,
+            n.id !== fromId &&
+            n.id !== toId,
         );
         if (isObstacle) continue;
 

@@ -5,6 +5,7 @@ import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
 export class StorageService {
   private readonly NODES_KEY = 'zflow_nodes';
   private readonly CONNECTIONS_KEY = 'zflow_connections';
+  private readonly CONNECTION_CONFIG_KEY = 'zflow_connection_config';
 
   loadNodes(): FossFlowNode[] | null {
     const savedNodes = localStorage.getItem(this.NODES_KEY);
@@ -43,8 +44,74 @@ export class StorageService {
     this.saveConnections(connections);
   }
 
+  loadConnectionConfig(): {
+    activeStyle: 'straight' | 'rounded';
+    presets: {
+      straight: {
+        lineType: 'solid' | 'dashed';
+        directed: boolean;
+        direction: 'forward' | 'reverse' | 'bi';
+        color: string;
+      };
+      rounded: {
+        lineType: 'solid' | 'dashed';
+        directed: boolean;
+        direction: 'forward' | 'reverse' | 'bi';
+        color: string;
+      };
+    };
+  } | null {
+    const saved = localStorage.getItem(this.CONNECTION_CONFIG_KEY);
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.style && parsed.lineType) {
+        const style = parsed.style as 'straight' | 'rounded';
+        const preset = {
+          lineType: parsed.lineType as 'solid' | 'dashed',
+          directed: !!parsed.directed,
+          direction: (parsed.direction || 'forward') as 'forward' | 'reverse' | 'bi',
+          color: (parsed.color || '#3b82f6') as string,
+        };
+        return {
+          activeStyle: style,
+          presets: {
+            straight: { ...preset },
+            rounded: { ...preset },
+          },
+        };
+      }
+
+      return parsed;
+    } catch (e) {
+      console.error('Failed to parse saved connection config', e);
+      return null;
+    }
+  }
+
+  saveConnectionConfig(config: {
+    activeStyle: 'straight' | 'rounded';
+    presets: {
+      straight: {
+        lineType: 'solid' | 'dashed';
+        directed: boolean;
+        direction: 'forward' | 'reverse' | 'bi';
+        color: string;
+      };
+      rounded: {
+        lineType: 'solid' | 'dashed';
+        directed: boolean;
+        direction: 'forward' | 'reverse' | 'bi';
+        color: string;
+      };
+    };
+  }): void {
+    localStorage.setItem(this.CONNECTION_CONFIG_KEY, JSON.stringify(config));
+  }
+
   clearStorage(): void {
     localStorage.removeItem(this.NODES_KEY);
     localStorage.removeItem(this.CONNECTIONS_KEY);
+    localStorage.removeItem(this.CONNECTION_CONFIG_KEY);
   }
 }

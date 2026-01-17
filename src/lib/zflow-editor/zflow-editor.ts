@@ -571,6 +571,18 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
     const speed = 1.0;
     switch (event.key) {
+      case 'Escape':
+        if (this.isDraggingEndpoint) {
+          this.isDraggingEndpoint = false;
+          this.draggedConnectionId = null;
+          this.draggedEndpointType = null;
+        }
+        if (this.editorMode() === 'connect') {
+          this.activePath.set([]);
+          this.connectSourceId.set(null);
+          this.previewPoint.set(null);
+        }
+        break;
       case 'ArrowUp':
         this.engine.camera.moveIsometric('up', speed);
         break;
@@ -800,7 +812,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
             const isClickingLast =
               lastPoint.x === node.position.x && lastPoint.y === node.position.y;
 
-            if (isClickingLast || node.active) {
+            if (isClickingLast || (node.active && this.connectSourceId() !== node.id)) {
               // Finalize connection
               if (path.length > 1 || (path.length === 1 && this.connectSourceId() !== node.id)) {
                 const finalPath = isClickingLast ? path : [...path, node.position];
@@ -816,6 +828,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
               }
               this.activePath.set([]);
               this.connectSourceId.set(null);
+              this.previewPoint.set(null);
             } else {
               // Add waypoint to zig-zag
               this.activePath.update((p) => [...p, node.position]);
@@ -824,6 +837,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
         } else {
           this.activePath.set([]);
           this.connectSourceId.set(null);
+          this.previewPoint.set(null);
         }
       }
     } else {
@@ -987,6 +1001,43 @@ export class ZFlowEditor implements OnInit, OnDestroy {
         }
       }
     }
+
+    // Complete connection on mouse up (drop) if we are tracing an active path and hovering a valid target
+    if (
+      this.editorMode() === 'connect' &&
+      this.activePath().length > 0 &&
+      this.connectSourceId() &&
+      this.hoveredNodeId() &&
+      this.hoveredNodeId() !== this.connectSourceId()
+    ) {
+      const nodes = this.gridService.nodes();
+      const target = nodes.find((n) => n.id === this.hoveredNodeId());
+      if (target && target.active) {
+        const path = this.activePath();
+        const last = path[path.length - 1];
+        const finalPath =
+          last && last.x === target.position.x && last.y === target.position.y
+            ? path
+            : [...path, target.position];
+
+        if (finalPath.length > 1) {
+          this.pushState();
+          this.gridService.addConnection(
+            this.connectSourceId()!,
+            target.id,
+            true,
+            finalPath,
+            this.connectionStyle(),
+            this.currentLineType(),
+          );
+        }
+
+        this.activePath.set([]);
+        this.connectSourceId.set(null);
+        this.previewPoint.set(null);
+      }
+    }
+
     this.isDragging = false;
     this.dragStartPoint.set(null);
     this.dragEndPoint.set(null);

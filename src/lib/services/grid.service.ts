@@ -181,16 +181,61 @@ export class GridService {
     customPath?: { x: number; y: number }[],
     style: 'straight' | 'rounded' = 'straight',
     lineType: 'solid' | 'dashed' = 'solid',
+    color?: string,
+    direction?: 'forward' | 'reverse' | 'bi',
   ): string {
+    if (!fromId || !toId || fromId === toId) {
+      console.debug('[zflow][grid] addConnection blocked: invalid endpoints', { fromId, toId });
+      return '';
+    }
+
+    const existing = this.connections().some((c) => {
+      const same = c.fromId === fromId && c.toId === toId;
+      const reverse = !directed && c.fromId === toId && c.toId === fromId;
+      return same || reverse;
+    });
+    if (existing) {
+      console.debug('[zflow][grid] addConnection blocked: duplicate connection', { fromId, toId });
+      return '';
+    }
+
+    const nodes = this.nodes();
+    const fromNode = nodes.find((n) => n.id === fromId);
+    const toNode = nodes.find((n) => n.id === toId);
+    if (!fromNode || !toNode) {
+      console.debug('[zflow][grid] addConnection blocked: missing node', { fromId, toId });
+      return '';
+    }
+
+    const fromDegree = this.connections().filter((c) => c.fromId === fromId || c.toId === fromId)
+      .length;
+    const toDegree = this.connections().filter((c) => c.fromId === toId || c.toId === toId).length;
+    if (
+      (typeof fromNode.maxConnections === 'number' && fromDegree >= fromNode.maxConnections) ||
+      (typeof toNode.maxConnections === 'number' && toDegree >= toNode.maxConnections)
+    ) {
+      console.debug('[zflow][grid] addConnection blocked: maxConnections reached', {
+        fromId,
+        toId,
+        fromDegree,
+        toDegree,
+        fromMax: fromNode.maxConnections,
+        toMax: toNode.maxConnections,
+      });
+      return '';
+    }
+
     const newConnection = this.connectionService.createConnection(
       fromId,
       toId,
-      this.nodes(),
+      nodes,
       this.gridSize(),
       directed,
       customPath,
       style,
       lineType,
+      color,
+      direction,
     );
     this.connections.update((conns) => [...conns, newConnection]);
     this.storageService.saveState(this.nodes(), this.connections());
