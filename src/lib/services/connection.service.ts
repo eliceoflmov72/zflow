@@ -71,7 +71,7 @@ export class ConnectionService {
     color?: string,
     direction?: 'forward' | 'reverse' | 'bi',
   ): FossFlowConnection {
-    if (!fromId || !toId || fromId === toId) {
+    if (!fromId || !toId) {
       this.debugLog('createConnection: invalid endpoints', { fromId, toId });
       const id = `manual-${Math.random().toString(36).substr(2, 9)}`;
       return {
@@ -91,10 +91,38 @@ export class ConnectionService {
     const fromNode = nodes.find((n) => n.id === fromId);
     const toNode = nodes.find((n) => n.id === toId);
 
+    if (fromId === toId && fromNode) {
+      const loop = this.generateSelfLoopPath(fromNode.position, gridSize);
+      return {
+        id,
+        fromId,
+        toId,
+        directed,
+        direction,
+        color: color || '#3b82f6',
+        path: loop,
+        style,
+        lineType,
+      };
+    }
+
     let path = customPath ? customPath.map((p) => ({ ...p })) : undefined;
     if (fromNode && toNode) {
       if (!path) {
         path = this.findPath(fromNode, toNode, nodes, gridSize) || undefined;
+      } else {
+        const densified = this.densifyPath(path);
+        const isOnlyEndpoints = path.length <= 2;
+
+        const collides = this.pathCollidesWithNodes(densified, nodes, fromId, toId);
+        if (collides) {
+          const routed = this.routeThroughWaypoints(path, nodes, gridSize, fromId, toId);
+          if (routed) path = routed;
+          else path = this.findPath(fromNode, toNode, nodes, gridSize) || densified;
+        } else {
+          if (style === 'straight' || isOnlyEndpoints) path = densified;
+          else path = densified;
+        }
       }
     }
 
@@ -109,6 +137,50 @@ export class ConnectionService {
       style,
       lineType,
     };
+  }
+
+  private generateSelfLoopPath(
+    pos: { x: number; y: number },
+    gridSize: { width: number; height: number },
+  ): { x: number; y: number }[] {
+    const x = pos.x;
+    const y = pos.y;
+    const right = Math.min(gridSize.width - 1, x + 1);
+    const down = Math.min(gridSize.height - 1, y + 1);
+    const left = Math.max(0, x - 1);
+    const up = Math.max(0, y - 1);
+
+    // Prefer a 1-tile loop to the right/down, fallback to left/up near borders
+    const x1 = right !== x ? right : left;
+    const y1 = down !== y ? down : up;
+
+    return [
+      { x, y },
+      { x: x1, y },
+      { x: x1, y: y1 },
+      { x, y: y1 },
+      { x, y },
+    ];
+  }
+
+  private densifyPath(points: { x: number; y: number }[]): { x: number; y: number }[] {
+    if (points.length < 2) return points;
+    const out: { x: number; y: number }[] = [{ x: points[0].x, y: points[0].y }];
+    for (let i = 1; i < points.length; i++) {
+      const prev = out[out.length - 1];
+      const next = points[i];
+      let cx = prev.x;
+      let cy = prev.y;
+      while (cx !== next.x) {
+        cx += Math.sign(next.x - cx);
+        out.push({ x: cx, y: cy });
+      }
+      while (cy !== next.y) {
+        cy += Math.sign(next.y - cy);
+        out.push({ x: cx, y: cy });
+      }
+    }
+    return out;
   }
 
   pathCollidesWithNodes(

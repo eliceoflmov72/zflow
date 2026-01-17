@@ -184,7 +184,7 @@ export class GridService {
     color?: string,
     direction?: 'forward' | 'reverse' | 'bi',
   ): string {
-    if (!fromId || !toId || fromId === toId) {
+    if (!fromId || !toId) {
       console.debug('[zflow][grid] addConnection blocked: invalid endpoints', { fromId, toId });
       return '';
     }

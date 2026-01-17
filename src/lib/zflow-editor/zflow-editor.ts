@@ -814,7 +814,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
             if (isClickingLast || (node.active && this.connectSourceId() !== node.id)) {
               // Finalize connection
-              if (path.length > 1 || (path.length === 1 && this.connectSourceId() !== node.id)) {
+              if (path.length > 1 || (path.length === 1 && this.connectSourceId())) {
                 const finalPath = isClickingLast ? path : [...path, node.position];
                 this.pushState();
                 this.gridService.addConnection(
