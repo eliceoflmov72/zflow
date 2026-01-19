@@ -1,10 +1,4 @@
-import {
-  Component,
-  Input,
-  WritableSignal,
-  Signal,
-  ChangeDetectionStrategy,
-} from '@angular/core';
+import { Component, Input, WritableSignal, Signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Toolbar } from '../toolbar';
 
@@ -32,18 +26,15 @@ export class TopToolbar {
   }
 
   getFullscreenIcon() {
-    const editorContainer = document.querySelector('zflow-editor .ff-container') as
-      | HTMLElement
-      | null;
-
-    const isOsFullscreen = !!editorContainer && document.fullscreenElement === editorContainer;
-    return isOsFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize';
+    if (typeof document === 'undefined') return 'pi pi-window-maximize';
+    return this.isFullscreen() ? 'pi pi-window-minimize' : 'pi pi-window-maximize';
   }
 
   toggleFullscreen() {
-    const editorContainer = document.querySelector('zflow-editor .ff-container') as
-      | HTMLElement
-      | null;
+    if (typeof document === 'undefined') return;
+    const editorContainer = document.querySelector(
+      'zflow-editor .ff-container',
+    ) as HTMLElement | null;
     if (!editorContainer) return;
 
     const isOsFullscreen = document.fullscreenElement === editorContainer;

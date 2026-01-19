@@ -15,6 +15,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   PLATFORM_ID,
+  AfterViewInit,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -54,8 +55,8 @@ import { PerformanceMonitorComponent } from '../components/performance-monitor/p
   templateUrl: './zflow-editor.html',
   styleUrl: './zflow-editor.css',
 })
-export class ZFlowEditor implements OnInit, OnDestroy {
-  @ViewChild('gpuCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
+export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('gpuCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
   gridService = inject(GridService);
   selectionService = inject(SelectionService);
   historyService = inject(HistoryService);
@@ -553,8 +554,16 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     this.gridService.initializeGrid(100, 100);
   }
 
-  async ngOnInit() {
-    console.log('[ZFlowEditor] ngOnInit - Starting initialization');
+  ngOnInit() {
+    if (isPlatformBrowser(this.platformId)) {
+      if (this.gridService.nodes().length === 0) {
+        this.initializeDefaultGrid();
+      }
+    }
+  }
+
+  async ngAfterViewInit() {
+    console.log('[ZFlowEditor] ngAfterViewInit - Starting initialization');
 
     if (!isPlatformBrowser(this.platformId)) {
       console.warn('[ZFlowEditor] Skipping initialization: Not in browser platform');
@@ -562,13 +571,8 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     }
 
     if (!this.canvasRef) {
-      console.error('[ZFlowEditor] Error: canvasRef is null in ngOnInit');
+      console.error('[ZFlowEditor] Error: canvasRef is null in ngAfterViewInit');
       return;
-    }
-
-    if (this.gridService.nodes().length === 0) {
-      console.log('[ZFlowEditor] initializeDefaultGrid triggered');
-      this.initializeDefaultGrid();
     }
 
     const canvas = this.canvasRef.nativeElement;
@@ -1568,5 +1572,3 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     this.lastMousePos = { x: event.clientX, y: event.clientY };
   }
 }
-
-export { ZFlowEditor as ZflowEditor };
