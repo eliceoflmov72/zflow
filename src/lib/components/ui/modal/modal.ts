@@ -7,7 +7,11 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     @if (isOpen) {
-      <div class="zmodal-backdrop" (click)="onCancel()" (mousedown)="$event.stopPropagation()"></div>
+      <div
+        class="zmodal-backdrop"
+        (click)="onCancel()"
+        (mousedown)="$event.stopPropagation()"
+      ></div>
       <div class="zmodal" (click)="$event.stopPropagation()" (mousedown)="$event.stopPropagation()">
         <div class="zmodal-header">
           <h3 class="zmodal-title">{{ title }}</h3>
@@ -16,7 +20,11 @@ import { CommonModule } from '@angular/common';
           <p class="zmodal-description">{{ description }}</p>
         </div>
         <div class="zmodal-footer">
-          <button class="zbtn zbtn-secondary" type="button" (click)="onCancel(); $event.stopPropagation()">
+          <button
+            class="zbtn zbtn-secondary"
+            type="button"
+            (click)="onCancel(); $event.stopPropagation()"
+          >
             {{ cancelButtonText || 'Cancelar' }}
           </button>
           <button
@@ -40,7 +48,7 @@ import { CommonModule } from '@angular/common';
         position: absolute;
         inset: 0;
         background: rgba(15, 23, 42, 0.45);
-        z-index: 1000;
+        z-index: 3;
         pointer-events: auto;
       }
       .zmodal {
@@ -53,7 +61,7 @@ import { CommonModule } from '@angular/common';
         max-width: calc(100% - 2rem);
         border-radius: 12px;
         box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-        z-index: 1001;
+        z-index: 4;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -138,4 +146,3 @@ export class ModalComponent<T = any> {
     this.confirmAction.emit(this.data);
   }
 }
-

@@ -13,7 +13,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   pointer-events: none;
-  z-index: 100;
+  z-index: 1;
 }
 .ff-fps {
   color: #22c55e; /* Green for good FPS */
