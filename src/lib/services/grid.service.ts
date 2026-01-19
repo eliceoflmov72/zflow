@@ -1,4 +1,5 @@
-import { Injectable, signal, effect, inject } from '@angular/core';
+import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
 import { Quadtree, QuadtreeItem, Rectangle } from '../utils/quadtree';
 import { StorageService } from './storage.service';
@@ -10,6 +11,7 @@ interface NodeItem extends QuadtreeItem {
 
 @Injectable()
 export class GridService {
+  private platformId = inject(PLATFORM_ID);
   private storageService = inject(StorageService);
   private connectionService = inject(ConnectionService);
 
@@ -21,10 +23,13 @@ export class GridService {
   private quadtree = new Quadtree<NodeItem>({ x: -5000, y: -5000, width: 10000, height: 10000 });
 
   constructor() {
-    this.loadFromStorage();
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadFromStorage();
+    }
 
     // Maintain Quadtree
     effect(() => {
+      if (!isPlatformBrowser(this.platformId)) return;
       const nodes = this.nodes();
       this.quadtree.clear();
       for (const node of nodes) {
@@ -207,8 +212,9 @@ export class GridService {
       return '';
     }
 
-    const fromDegree = this.connections().filter((c) => c.fromId === fromId || c.toId === fromId)
-      .length;
+    const fromDegree = this.connections().filter(
+      (c) => c.fromId === fromId || c.toId === fromId,
+    ).length;
     const toDegree = this.connections().filter((c) => c.fromId === toId || c.toId === toId).length;
     if (
       (typeof fromNode.maxConnections === 'number' && fromDegree >= fromNode.maxConnections) ||

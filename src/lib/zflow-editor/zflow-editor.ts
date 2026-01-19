@@ -61,7 +61,10 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   historyService = inject(HistoryService);
   private cdr = inject(ChangeDetectorRef);
   private platformId = inject(PLATFORM_ID);
-  private engine = new WebGPUEngine();
+  private engine!: WebGPUEngine;
+
+  undoBound = () => this.undo();
+  redoBound = () => this.redo();
 
   webGpuSupported = signal(true);
   editorMode = signal<'select' | 'pan' | 'connect' | 'paint' | 'paint-floor'>('select');
@@ -121,6 +124,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   displayRotation = signal(45);
   currentRotationLabel = computed(() => {
     this.frameCounter(); // Reactive dependency
+    if (!isPlatformBrowser(this.platformId) || !this.engine) return '0°';
     let r = this.engine.camera.rotation % 360;
     if (r < 0) r += 360;
     // Use target if we are very close to avoid jitter in label
@@ -159,10 +163,6 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     // Assuming the grid is square or we want to maintain aspect ratio visually.
     // For a simple isometric view, the effective "width" and "height" might not change,
     // but the visual representation on screen might.
-    // For now, let's assume it's about the bounding box of the grid.
-    // If the rotation is 45 or 225 degrees, the visual width and height might be swapped
-    // or more complex. For simplicity, we'll just return the original for now,
-    // or a swapped version if the rotation implies it.
     // This is a placeholder and might need more precise calculation based on actual isometric projection.
     if (this.currentRotationLabel() === '45°' || this.currentRotationLabel() === '225°') {
       return { width, height };
@@ -175,14 +175,14 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     this.frameCounter(); // Reactive dependency
     const conns = this.gridService.connections();
     const nodes = this.gridService.nodes();
-    if (!this.engine || !this.engine.initialized) return [];
+    if (!isPlatformBrowser(this.platformId) || !this.engine || !this.engine.initialized) return [];
 
     // Optimization: Create a Map for O(1) node lookup instead of O(N) .find()
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
     // Get visible bounds for frustum culling
     const bounds = this.engine.getVisibleBounds();
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = isPlatformBrowser(this.platformId) ? window.devicePixelRatio || 1 : 1;
 
     return conns
       .map((conn) => {
@@ -328,13 +328,15 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
     // Optimization (Task 7): Spatial Partitioning
     // Query Quadtree for candidate nodes within the view frustum bounds
-    const bounds = this.engine?.getVisibleBounds();
+    if (!isPlatformBrowser(this.platformId) || !this.engine || !this.engine.initialized) return [];
+
+    const bounds = this.engine.getVisibleBounds();
     let candidateNodes = bounds
       ? this.gridService.getNodesInBounds(bounds)
       : this.gridService.nodes();
 
     const canvas = this.canvasRef?.nativeElement;
-    if (!canvas || !this.engine || !this.engine.initialized) return [];
+    if (!canvas) return [];
 
     // ==================== ADAPTIVE QUALITY ====================
     // Get quality settings from engine
@@ -360,7 +362,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
         .map((item) => item.node);
     }
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = isPlatformBrowser(this.platformId) ? window.devicePixelRatio || 1 : 1;
     const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
     const fovFactor = 1.0 / Math.tan(fovRad / 2);
     const scaleBase = 3.6;
@@ -404,7 +406,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     if (!start || !end) return [];
 
     // Safety check just in case signals are stale
-    if (!this.canvasRef?.nativeElement || !this.engine?.initialized) return [];
+    if (!isPlatformBrowser(this.platformId) || !this.engine || !this.engine.initialized) return [];
 
     const minX = Math.min(start.x, end.x);
     const maxX = Math.max(start.x, end.x);
@@ -412,7 +414,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     const maxZ = Math.max(start.z, end.z);
 
     const nodes = [];
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = isPlatformBrowser(this.platformId) ? window.devicePixelRatio || 1 : 1;
     const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
     const fovFactor = 1.0 / Math.tan(fovRad / 2);
     // Use slightly larger scale or distinct style for preview
@@ -513,9 +515,11 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   selectedConnection = signal<FossFlowConnection | null>(null);
 
   constructor() {
-    console.log('[ZFlowEditor] Constructor - Initializing component instance');
-    console.log('[ZFlowEditor] Platform ID:', this.platformId);
-    console.log('[ZFlowEditor] Is Browser:', isPlatformBrowser(this.platformId));
+    console.log('[ZFlowEditor] Constructor start. Platform:', this.platformId);
+    if (isPlatformBrowser(this.platformId)) {
+      this.engine = new WebGPUEngine();
+      console.log('[ZFlowEditor] WebGPUEngine instance created');
+    }
 
     effect(() => {
       const selectedId = this.selectionService.selectedNodeId();
@@ -605,7 +609,10 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     if (this.animationFrameId !== null) cancelAnimationFrame(this.animationFrameId);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
-    this.engine.destroy();
+    // Only destroy engine if it was initialized (i.e., in browser)
+    if (isPlatformBrowser(this.platformId) && this.engine) {
+      this.engine.destroy();
+    }
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -617,28 +624,22 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     const speed = 1.0;
     switch (event.key) {
       case 'Escape':
-        if (this.isDraggingEndpoint) {
-          this.isDraggingEndpoint = false;
-          this.draggedConnectionId = null;
-          this.draggedEndpointType = null;
-        }
-        if (this.editorMode() === 'connect') {
-          this.activePath.set([]);
-          this.connectSourceId.set(null);
-          this.previewPoint.set(null);
-        }
+        // Fix: Clear all connection-related state on Escape
+        this.activePath.set([]);
+        this.connectSourceId.set(null);
+        this.previewPoint.set(null);
         break;
       case 'ArrowUp':
-        this.engine.camera.moveIsometric('up', speed);
+        if (this.engine) this.engine.camera.moveIsometric('up', speed);
         break;
       case 'ArrowDown':
-        this.engine.camera.moveIsometric('down', speed);
+        if (this.engine) this.engine.camera.moveIsometric('down', speed);
         break;
       case 'ArrowLeft':
-        this.engine.camera.moveIsometric('left', speed);
+        if (this.engine) this.engine.camera.moveIsometric('left', speed);
         break;
       case 'ArrowRight':
-        this.engine.camera.moveIsometric('right', speed);
+        if (this.engine) this.engine.camera.moveIsometric('right', speed);
         break;
       case 'v':
       case 'V':
@@ -692,6 +693,9 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
   @HostListener('document:fullscreenchange')
   onFullscreenChange() {
+    // Guard DOM access for SSR
+    if (typeof document === 'undefined') return;
+
     // Check both browser fullscreen and our custom fullscreen mode
     const editorContainer = document.querySelector('zflow-editor .ff-container');
     if (editorContainer && !document.fullscreenElement) {
@@ -704,7 +708,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
   private handleResize = () => {
     const canvas = this.canvasRef.nativeElement;
-    if (!canvas) return;
+    if (!canvas || !this.engine) return; // Guard engine call
     const parent = canvas.parentElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
@@ -716,7 +720,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
   private startRenderLoop() {
     const render = () => {
-      if (!this.canvasRef.nativeElement) return;
+      if (!this.canvasRef.nativeElement || !this.engine) return; // Guard engine call
 
       // Ultra-fast interpolation for smooth but snappy rotation
       const currentRot = this.engine.camera.rotation;
@@ -756,6 +760,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
   // Paint helper
   private performPaintAt(clientX: number, clientY: number): any | null {
+    if (!this.engine) return null; // Guard engine call
     const canvas = this.canvasRef.nativeElement;
     const rect = canvas.getBoundingClientRect();
     const x = clientX - rect.left;
@@ -819,6 +824,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   onClick(event: MouseEvent) {
     // Ignore clicks when modal is open
     if (this.showClearConfirm()) return;
+    if (!this.engine) return; // Guard engine call
 
     if (this.editorMode() === 'pan') return;
 
@@ -901,6 +907,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   onMouseDown(event: MouseEvent) {
     // Ignore mouse events when modal is open
     if (this.showClearConfirm()) return;
+    if (!this.engine) return; // Guard engine call
 
     this.mouseDownTime = Date.now();
     this.lastMousePos = { x: event.clientX, y: event.clientY };
@@ -942,6 +949,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
   // Helper to get hit without reusing full logic everywhere
   private getHitFromMouse(clientX: number, clientY: number) {
+    if (!this.engine) return null; // Guard engine call
     const canvas = this.canvasRef.nativeElement;
     const rect = canvas.getBoundingClientRect();
     const x = clientX - rect.left;
@@ -952,6 +960,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
   @HostListener('window:mousemove', ['$event'])
   onMouseMove(event: MouseEvent) {
+    if (!this.engine) return; // Guard engine call
     const canvas = this.canvasRef.nativeElement;
     const rect = canvas.getBoundingClientRect();
 
@@ -1178,6 +1187,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
 
   onWheel(event: WheelEvent) {
     event.preventDefault();
+    if (!this.engine) return; // Guard engine call
     // Progressive zoom based on event.deltaY
     // Use a multiplier for smoothness. Pinch gestures typically send deltaY with Ctrl key.
     const multiplier = 1 + Math.abs(event.deltaY) * 0.001;
@@ -1189,21 +1199,26 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   }
 
   zoomIn() {
+    if (!this.engine) return; // Guard engine call
     this.multiplyZoom(0.8);
   }
   zoomOut() {
+    if (!this.engine) return; // Guard engine call
     this.multiplyZoom(1.25);
   }
 
   rotateLeft() {
+    if (!this.engine) return; // Guard engine call
     this.targetRotation.update((v: number) => v - 45);
   }
 
   rotateRight() {
+    if (!this.engine) return; // Guard engine call
     this.targetRotation.update((v: number) => v + 45);
   }
 
   private multiplyZoom(factor: number) {
+    if (!this.engine) return; // Guard engine call
     // Zoom range: 200% to 325% (FOV 10.285 to 15)
     // Label shows relative to default 250% (FOV 12.857)
     let fov = this.engine.camera.zoom * factor;
@@ -1213,6 +1228,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   }
 
   private syncZoomLabel() {
+    if (!this.engine) return; // Guard engine call
     // Label relative to default 250% (FOV 12.857): show as 0%
     // Formula: (12.857 / FOV - 1) * 100
     const p = Math.round((12.857 / this.engine.camera.zoom - 1) * 100);
@@ -1257,6 +1273,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   }
 
   resetView() {
+    if (!this.engine) return; // Guard engine call
     const size = this.gridService.gridSize();
     // Calculate exact center of the grid
     const cx = (size.width - 1) / 2;
@@ -1269,6 +1286,9 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   }
 
   toggleFullscreen() {
+    // Guard DOM access for SSR
+    if (typeof document === 'undefined') return;
+
     const container = this.canvasRef.nativeElement.parentElement;
     if (!container) return;
 
@@ -1548,3 +1568,5 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     this.lastMousePos = { x: event.clientX, y: event.clientY };
   }
 }
+
+export { ZFlowEditor as ZflowEditor };

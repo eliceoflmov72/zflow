@@ -1,13 +1,16 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
 
 @Injectable()
 export class StorageService {
+  private platformId = inject(PLATFORM_ID);
   private readonly NODES_KEY = 'zflow_nodes';
   private readonly CONNECTIONS_KEY = 'zflow_connections';
   private readonly CONNECTION_CONFIG_KEY = 'zflow_connection_config';
 
   loadNodes(): FossFlowNode[] | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
     const savedNodes = localStorage.getItem(this.NODES_KEY);
     if (!savedNodes) return null;
 
@@ -20,6 +23,7 @@ export class StorageService {
   }
 
   loadConnections(): FossFlowConnection[] | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
     const savedConns = localStorage.getItem(this.CONNECTIONS_KEY);
     if (!savedConns) return null;
 
@@ -32,10 +36,12 @@ export class StorageService {
   }
 
   saveNodes(nodes: FossFlowNode[]): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     localStorage.setItem(this.NODES_KEY, JSON.stringify(nodes));
   }
 
   saveConnections(connections: FossFlowConnection[]): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     localStorage.setItem(this.CONNECTIONS_KEY, JSON.stringify(connections));
   }
 
@@ -61,6 +67,7 @@ export class StorageService {
       };
     };
   } | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
     const saved = localStorage.getItem(this.CONNECTION_CONFIG_KEY);
     if (!saved) return null;
     try {
@@ -106,10 +113,12 @@ export class StorageService {
       };
     };
   }): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     localStorage.setItem(this.CONNECTION_CONFIG_KEY, JSON.stringify(config));
   }
 
   clearStorage(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     localStorage.removeItem(this.NODES_KEY);
     localStorage.removeItem(this.CONNECTIONS_KEY);
     localStorage.removeItem(this.CONNECTION_CONFIG_KEY);
