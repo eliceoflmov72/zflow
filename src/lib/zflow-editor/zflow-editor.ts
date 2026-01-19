@@ -14,8 +14,9 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
+  PLATFORM_ID,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GridService } from '../services/grid.service';
 import { SelectionService } from '../services/selection.service';
@@ -59,7 +60,9 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   selectionService = inject(SelectionService);
   historyService = inject(HistoryService);
   private cdr = inject(ChangeDetectorRef);
+  private platformId = inject(PLATFORM_ID);
   private engine = new WebGPUEngine();
+
   webGpuSupported = signal(true);
   editorMode = signal<'select' | 'pan' | 'connect' | 'paint' | 'paint-floor'>('select');
   paintTool = signal<'brush' | 'rectangle'>('rectangle');
@@ -510,6 +513,10 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   selectedConnection = signal<FossFlowConnection | null>(null);
 
   constructor() {
+    console.log('[ZFlowEditor] Constructor - Initializing component instance');
+    console.log('[ZFlowEditor] Platform ID:', this.platformId);
+    console.log('[ZFlowEditor] Is Browser:', isPlatformBrowser(this.platformId));
+
     effect(() => {
       const selectedId = this.selectionService.selectedNodeId();
       if (selectedId) {
@@ -543,12 +550,37 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
+    console.log('[ZFlowEditor] ngOnInit - Starting initialization');
+
+    if (!isPlatformBrowser(this.platformId)) {
+      console.warn('[ZFlowEditor] Skipping initialization: Not in browser platform');
+      return;
+    }
+
+    if (!this.canvasRef) {
+      console.error('[ZFlowEditor] Error: canvasRef is null in ngOnInit');
+      return;
+    }
+
     if (this.gridService.nodes().length === 0) {
+      console.log('[ZFlowEditor] initializeDefaultGrid triggered');
       this.initializeDefaultGrid();
     }
 
     const canvas = this.canvasRef.nativeElement;
+    if (!canvas) {
+      console.error('[ZFlowEditor] Error: nativeElement is null in canvasRef');
+      return;
+    }
+
+    console.log('[ZFlowEditor] Starting WebGPUEngine.init(canvas)');
     const success = await this.engine.init(canvas);
+    console.log('[ZFlowEditor] WebGPU initialization success:', success);
+
+    if (this.engine.initialized) {
+      console.log('[ZFlowEditor] Engine is fully initialized');
+    }
+
     this.webGpuSupported.set(success);
 
     if (success) {
@@ -562,9 +594,9 @@ export class ZFlowEditor implements OnInit, OnDestroy {
           this.handleResize();
         });
         this.resizeObserver.observe(parent);
+        console.log('[ZFlowEditor] ResizeObserver attached to parent');
       }
 
-      // Optimization: Rely on @HostListener for resize to avoid duplicate listeners
       this.startRenderLoop();
     }
   }
@@ -787,7 +819,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   onClick(event: MouseEvent) {
     // Ignore clicks when modal is open
     if (this.showClearConfirm()) return;
-    
+
     if (this.editorMode() === 'pan') return;
 
     const duration = Date.now() - this.mouseDownTime;
@@ -869,7 +901,7 @@ export class ZFlowEditor implements OnInit, OnDestroy {
   onMouseDown(event: MouseEvent) {
     // Ignore mouse events when modal is open
     if (this.showClearConfirm()) return;
-    
+
     this.mouseDownTime = Date.now();
     this.lastMousePos = { x: event.clientX, y: event.clientY };
     if (
@@ -1516,5 +1548,3 @@ export class ZFlowEditor implements OnInit, OnDestroy {
     this.lastMousePos = { x: event.clientX, y: event.clientY };
   }
 }
-
-export { ZFlowEditor as ZflowEditor };

@@ -77,10 +77,18 @@ export class WebGPUEngine {
   private cachedInstanceData: Float32Array | null = null;
 
   async init(canvas: HTMLCanvasElement): Promise<boolean> {
-    if (!navigator.gpu) return false;
+    console.log('[WebGPUEngine] init starting...');
+    if (!navigator.gpu) {
+      console.error('[WebGPUEngine] navigator.gpu is undefined');
+      return false;
+    }
     const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) return false;
+    if (!adapter) {
+      console.error('[WebGPUEngine] Failed to request adapter');
+      return false;
+    }
     this.device = await adapter.requestDevice();
+    console.log('[WebGPUEngine] Device requested');
     this.context = canvas.getContext('webgpu') as GPUCanvasContext;
     this.format = navigator.gpu.getPreferredCanvasFormat();
 
@@ -89,6 +97,7 @@ export class WebGPUEngine {
       format: this.format,
       alphaMode: 'premultiplied',
     });
+    console.log('[WebGPUEngine] Context configured');
 
     await this.setupPipeline();
     this.setupGridPipeline();
@@ -96,6 +105,7 @@ export class WebGPUEngine {
     this.createBuffers();
 
     this.initialized = true;
+    console.log('[WebGPUEngine] Initialization complete');
     return true;
   }
 
