@@ -327,25 +327,14 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   positionedNodes = computed(() => {
     this.frameCounter(); // Reactive dependency
 
-    // Optimization (Task 7): Spatial Partitioning
-    // Query Quadtree for candidate nodes within the view frustum bounds
-    if (!isPlatformBrowser(this.platformId) || !this.engine || !this.engine.initialized) return [];
-
-    const bounds = this.engine.getVisibleBounds();
-    let candidateNodes = bounds
-      ? this.gridService.getNodesInBounds(bounds)
-      : this.gridService.nodes();
-
-    const canvas = this.canvasRef?.nativeElement;
-    if (!canvas) return [];
-
     // ==================== ADAPTIVE QUALITY ====================
     // Get quality settings from engine
     const qualitySettings = this.engine.frameController.getQualitySettings();
     const maxNodes = qualitySettings.maxVisibleNodes;
 
-    // Filter active nodes first, then limit
-    let activeNodes = candidateNodes.filter((n) => n.active);
+    // Use GridService.activeNodes() directly for reactiveness
+    // This avoids race conditions with the Quadtree
+    let activeNodes = this.gridService.activeNodes();
 
     // If we have too many nodes, prioritize by distance to camera center
     if (activeNodes.length > maxNodes) {
@@ -354,13 +343,13 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
       // Sort by distance to camera target and take closest
       activeNodes = activeNodes
-        .map((n) => ({
+        .map((n: FossFlowNode) => ({
           node: n,
           dist: Math.hypot(n.position.x - centerX, n.position.y - centerZ),
         }))
-        .sort((a, b) => a.dist - b.dist)
+        .sort((a: any, b: any) => a.dist - b.dist)
         .slice(0, maxNodes)
-        .map((item) => item.node);
+        .map((item: any) => item.node);
     }
 
     const dpr = isPlatformBrowser(this.platformId) ? window.devicePixelRatio || 1 : 1;
@@ -373,7 +362,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     const lodMediumThreshold = qualitySettings.lodMediumThreshold;
 
     return activeNodes
-      .map((node) => {
+      .map((node: FossFlowNode) => {
         // Use cached projection when available for static nodes
         const screenPos = this.engine.worldToScreenCached(node.position.x, -0.1, node.position.y);
         if (!screenPos) return null;
@@ -396,8 +385,8 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
           lod,
         };
       })
-      .filter((n): n is NonNullable<typeof n> => n !== null)
-      .sort((a, b) => b.z - a.z); // Sort back to front
+      .filter((n: any): n is NonNullable<typeof n> => n !== null)
+      .sort((a: any, b: any) => b.z - a.z); // Sort back to front
   });
 
   // Computed signal for paint preview rectangle
@@ -776,7 +765,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     if (hit) {
       const gx = Math.round(hit.x);
       const gz = Math.round(hit.z);
-      const node = this.gridService.nodes().find((n) => n.position.x === gx && n.position.y === gz);
+      const node = this.gridService.getNodeAt(gx, gz);
 
       if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
         const updates: Partial<FossFlowNode> = {};
@@ -846,7 +835,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     if (hit) {
       const gx = Math.round(hit.x);
       const gz = Math.round(hit.z);
-      const node = this.gridService.nodes().find((n) => n.position.x === gx && n.position.y === gz);
+      const node = this.gridService.getNodeAt(gx, gz);
 
       if (this.editorMode() === 'select') {
         const isMulti = event.ctrlKey || event.metaKey || event.shiftKey;
@@ -1021,9 +1010,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
         const gz = Math.round(hit.z);
 
         // Hover Node Logic
-        const node = this.gridService
-          .nodes()
-          .find((n) => n.position.x === gx && n.position.y === gz);
+        const node = this.gridService.getNodeAt(gx, gz);
 
         if (node) {
           this.hoveredNodeId.set(node.id);
@@ -1128,7 +1115,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
     for (let x = minX; x <= maxX; x++) {
       for (let z = minZ; z <= maxZ; z++) {
-        const node = nodes.find((n) => n.position.x === x && n.position.y === z);
+        const node = this.gridService.getNodeAt(x, z);
         if (node) {
           if (!selectedIds.includes(node.id)) {
             selectedIds.push(node.id);
@@ -1160,7 +1147,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
     for (let x = minX; x <= maxX; x++) {
       for (let z = minZ; z <= maxZ; z++) {
-        let node = nodes.find((n) => n.position.x === x && n.position.y === z);
+        let node = this.gridService.getNodeAt(x, z);
 
         if (node) {
           // Update existing
@@ -1315,6 +1302,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   confirmClear() {
     this.pushState();
     this.gridService.clearGrid();
+    if (this.engine) this.engine.clearProjectionCache();
     this.showClearConfirm.set(false);
     this.cdr.detectChanges();
   }
@@ -1390,6 +1378,10 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
         this.pushState();
         const updates = selectedIds.map((id) => ({ id, changes: { active: false } }));
         this.gridService.updateManyNodes(updates);
+
+        // Clear engine cache for these specific nodes to ensure fresh state if replaced
+        if (this.engine) this.engine.clearProjectionCache();
+
         // Deselect or keep selected? Usually keep selected so you can undo easily or see they are gone (but they are hidden).
         // If active=false, they disappear from view (except maybe grid).
         // Let's clear selection.

@@ -601,6 +601,14 @@ export class WebGPUEngine {
   }
 
   /**
+   * Clear the projection cache manually
+   */
+  clearProjectionCache(): void {
+    this.projectionCache.clear();
+    this.lastRenderStats.cachedProjections = 0;
+  }
+
+  /**
    * Force a specific quality level (user override)
    */
   setQualityLevel(level: 'ultra' | 'high' | 'medium' | 'low' | 'potato'): void {

@@ -1,4 +1,4 @@
-import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, signal, effect, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
 import { Quadtree, QuadtreeItem, Rectangle } from '../utils/quadtree';
@@ -19,7 +19,15 @@ export class GridService {
   connections = signal<FossFlowConnection[]>([]);
   gridSize = signal({ width: 40, height: 40 });
 
-  // Spatial Partitioning (Task 7): Quadtree for optimized visibility queries
+  // Map for O(1) access by coordinate "x,y"
+  private nodeCoordMap = new Map<string, FossFlowNode>();
+
+  // Computed signal for only active nodes to optimize rendering
+  activeNodes = computed(() => {
+    return this.nodes().filter((n) => n.active);
+  });
+
+  // Spatial Partitioning: Quadtree for optimized visibility queries
   private quadtree = new Quadtree<NodeItem>({ x: -5000, y: -5000, width: 10000, height: 10000 });
 
   constructor() {
@@ -27,12 +35,17 @@ export class GridService {
       this.loadFromStorage();
     }
 
-    // Maintain Quadtree
+    // Maintain Quadtree and Coordinate Map
     effect(() => {
       if (!isPlatformBrowser(this.platformId)) return;
       const nodes = this.nodes();
+
+      // Update local cache map
+      const newMap = new Map<string, FossFlowNode>();
       this.quadtree.clear();
+
       for (const node of nodes) {
+        newMap.set(`${node.position.x},${node.position.y}`, node);
         this.quadtree.insert({
           x: node.position.x,
           y: node.position.y,
@@ -40,7 +53,15 @@ export class GridService {
           node: node,
         });
       }
+      this.nodeCoordMap = newMap;
     });
+  }
+
+  /**
+   * Fast coordinate-based lookup
+   */
+  getNodeAt(x: number, y: number): FossFlowNode | undefined {
+    return this.nodeCoordMap.get(`${x},${y}`);
   }
 
   /**
@@ -90,10 +111,6 @@ export class GridService {
       }
     }
 
-    // Set a few active ones to start
-    initialNodes[2 * width + 2].active = true;
-    initialNodes[4 * width + 4].active = true;
-
     this.nodes.set(initialNodes);
     this.connections.set([]);
     this.gridSize.set({ width, height });
@@ -141,6 +158,7 @@ export class GridService {
     }
 
     this.nodes.update((nodes) => nodes.map((n) => (n.id === id ? { ...n, ...updates } : n)));
+    // State is saved by the effect that watches this.nodes()
     this.storageService.saveState(this.nodes(), this.connections());
   }
 
@@ -148,6 +166,8 @@ export class GridService {
    * Update multiple nodes in batch
    */
   updateManyNodes(updates: { id: string; changes: Partial<FossFlowNode> }[]) {
+    if (updates.length === 0) return;
+
     const updatesMap = new Map(updates.map((u) => [u.id, u.changes]));
 
     this.nodes.update((nodes) =>
