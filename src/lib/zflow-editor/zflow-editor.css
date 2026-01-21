@@ -59,7 +59,12 @@ canvas {
 }
 .ff-btn-delete:hover {
   background: #fee2e2;
+  border-color: #fca5a5;
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+}
+.ff-btn-delete i {
+  font-size: 1rem;
 }
 .ff-switch-label {
   display: flex;
@@ -128,37 +133,7 @@ canvas {
   -webkit-mask-position: bottom center;
   transition: background-color 0.1s ease;
 }
-.ff-object-gallery {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-.ff-gallery-item {
-  aspect-ratio: 1;
-  background: #f8fafc;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  padding: 0.5rem;
-  color: #64748b;
-}
-.ff-gallery-item:hover {
-  border-color: #3b82f6;
-  background: #eff6ff;
-  transform: translateY(-2px);
-}
-.ff-gallery-item.active {
-  border-color: #3b82f6;
-  background: #eff6ff;
-  color: #3b82f6;
-}
-/* Removed .ff-toolbar styles (moved to toolbar.css) */
-/* Removed .ff-zoom-menu styles (moved to zoom-menu.css) */
+/* Modes & Indicators */
 .ff-mode-toggle {
   display: flex;
   gap: 0.3rem;
@@ -195,15 +170,6 @@ canvas {
   box-shadow: none !important;
 }
 
-.ff-btn-delete:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
-}
-.ff-btn-delete i {
-  font-size: 1rem;
-}
 .ff-debug-hint {
   position: absolute;
   bottom: 1rem;
@@ -211,41 +177,7 @@ canvas {
   color: #94a3b8;
   font-size: 0.75rem;
 }
-.ff-object-gallery {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-.ff-gallery-item {
-  aspect-ratio: 1;
-  background: #f8fafc;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s ease;
-  padding: 8px;
-  color: #64748b;
-}
-.ff-gallery-item:hover {
-  background: #f1f5f9;
-  transform: translateY(-2px);
-  color: #1e293b;
-}
-.ff-gallery-preview {
-  width: 100%;
-  height: 100%;
-  background-color: currentColor;
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-}
+
 .ff-btn-clear {
   background: transparent;
   border: none;
@@ -257,10 +189,6 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.ff-btn-clear:hover {
-  background: #fef2f2;
-  color: #ef4444;
 }
 .ff-btn-clear:hover {
   background: #fef2f2;

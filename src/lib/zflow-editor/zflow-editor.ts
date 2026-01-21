@@ -139,6 +139,11 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   showClearConfirm = signal(false);
   frameCounter = signal(0);
 
+  private getFovFactor() {
+    const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
+    return 1.0 / Math.tan(fovRad / 2);
+  }
+
   // ==================== PERFORMANCE MONITORING ====================
   showPerformanceStats = signal(true); // Toggle for dev mode stats
 
@@ -179,251 +184,215 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     const nodes = this.gridService.nodes();
     if (!isPlatformBrowser(this.platformId) || !this.engine || !this.engine.initialized) return [];
 
-    // Optimization: Create a Map for O(1) node lookup instead of O(N) .find()
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-
-    // Get visible bounds for frustum culling
     const bounds = this.engine.getVisibleBounds();
-    const dpr = isPlatformBrowser(this.platformId) ? window.devicePixelRatio || 1 : 1;
+    const dpr = window.devicePixelRatio || 1;
+    const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
+    const fovFactor = 1.0 / Math.tan(fovRad / 2);
 
     return conns
-      .map((conn) => {
-        const from = nodeMap.get(conn.fromId);
-        const to = nodeMap.get(conn.toId);
-        if (!from || !to) return null;
-
-        // Optimization: Basic Frustum Culling for connections
-        // If both nodes are far outside the visible bounds, skip heavy path projection
-        if (bounds) {
-          const margin = 5;
-          const isFromOut =
-            from.position.x < bounds.x - margin ||
-            from.position.x > bounds.x + bounds.width + margin ||
-            from.position.y < bounds.y - margin ||
-            from.position.y > bounds.y + bounds.height + margin;
-          const isToOut =
-            to.position.x < bounds.x - margin ||
-            to.position.x > bounds.x + bounds.width + margin ||
-            to.position.y < bounds.y - margin ||
-            to.position.y > bounds.y + bounds.height + margin;
-
-          if (isFromOut && isToOut) return null;
-        }
-
-        // Clone/Prepare path points
-        let rawPath = conn.path ? [...conn.path] : [from.position, to.position];
-        if (!conn.path && from.position.x !== to.position.x && from.position.y !== to.position.y) {
-          rawPath = [from.position, { x: to.position.x, y: from.position.y }, to.position];
-        }
-
-        if (rawPath.length < 2) return null;
-
-        const h = -0.05;
-        const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
-        const fovFactor = 1.0 / Math.tan(fovRad / 2);
-
-        // CLIPPING & ARROWHEAD CALCULATION ... (Rest of the logic remains the same but now runs on fewer connections)
-        const points3D = rawPath.map((p) => ({ ...p }));
-        const arrowLen = 0.35;
-        const baseOffset = 0.45;
-
-        // Clip logic simplified for brevity here but same as original ...
-        const p0 = points3D[0];
-        const p1_next = points3D[1];
-        const dx0 = p1_next.x - p0.x;
-        const dy0 = p1_next.y - p0.y;
-        const dist0 = Math.hypot(dx0, dy0);
-
-        const direction = conn.direction || 'forward';
-        const isDirected = conn.directed;
-        const hasStartArrow = isDirected && (direction === 'reverse' || direction === 'bi');
-        const hasEndArrow = isDirected && (direction === 'forward' || direction === 'bi');
-
-        if (dist0 > 0) {
-          const offsetStart = baseOffset + (hasStartArrow ? arrowLen : 0);
-          points3D[0] = {
-            x: p0.x + (dx0 / dist0) * offsetStart,
-            y: p0.y + (dy0 / dist0) * offsetStart,
-          };
-        }
-
-        let arrowPoints = '';
-        let arrowPointsStart = '';
-        const lastIdx = points3D.length - 1;
-        const pEnd = points3D[lastIdx];
-        const pPrev = points3D[lastIdx - 1];
-        const dxE = pEnd.x - pPrev.x;
-        const dyE = pEnd.y - pPrev.y;
-        const distE = Math.hypot(dxE, dyE);
-
-        if (distE > 0) {
-          const offsetEnd = baseOffset + (hasEndArrow ? arrowLen : 0);
-          points3D[lastIdx] = {
-            x: pEnd.x - (dxE / distE) * offsetEnd,
-            y: pEnd.y - (dyE / distE) * offsetEnd,
-          };
-
-          if (hasEndArrow) {
-            const tip = {
-              x: pEnd.x - (dxE / distE) * baseOffset,
-              y: pEnd.y - (dyE / distE) * baseOffset,
-            };
-            const aps = this.calculateIsometricArrow(tip, pPrev, h);
-            if (aps) arrowPoints = aps;
-          }
-        }
-
-        if (hasStartArrow && dist0 > 0) {
-          const tip = {
-            x: p0.x + (dx0 / dist0) * baseOffset,
-            y: p0.y + (dy0 / dist0) * baseOffset,
-          };
-          const aps = this.calculateIsometricArrow(tip, p1_next, h);
-          if (aps) arrowPointsStart = aps;
-        }
-
-        const projectedPoints = points3D
-          .map((p) => {
-            const sp = this.engine.worldToScreenCached(p.x, h, p.y);
-            return sp ? { x: sp.x / dpr, y: sp.y / dpr } : null;
-          })
-          .filter((p) => p !== null) as { x: number; y: number }[];
-
-        if (projectedPoints.length < 2) return null;
-
-        const firstZ = this.engine.worldToScreenCached(rawPath[0].x, h, rawPath[0].y)?.z || 10;
-        const lastZ =
-          this.engine.worldToScreenCached(
-            rawPath[rawPath.length - 1].x,
-            h,
-            rawPath[rawPath.length - 1].y,
-          )?.z || 10;
-        const scale = (3.5 * fovFactor) / ((firstZ + lastZ) / 2);
-
-        const ptStart = projectedPoints[0];
-        const ptEnd = projectedPoints[projectedPoints.length - 1];
-
-        let pathData = '';
-        if (conn.style === 'rounded' && projectedPoints.length > 2) {
-          pathData = this.getRoundedOrthogonalPath(projectedPoints);
-        } else {
-          pathData = `M ${projectedPoints.map((p) => `${p.x},${p.y}`).join(' L ')}`;
-        }
-
-        return {
-          ...conn,
-          points: projectedPoints.map((p) => `${p.x},${p.y}`).join(' '),
-          pathData,
-          arrowPoints,
-          arrowPointsStart,
-          scale: !isNaN(scale) ? scale : 1,
-          firstPoint: { x: ptStart.x, y: ptStart.y },
-          lastPoint: { x: ptEnd.x, y: ptEnd.y },
-        };
-      })
+      .map((conn) => this.projectConnection(conn, nodeMap, dpr, fovFactor, bounds))
       .filter((c): c is NonNullable<typeof c> => c !== null);
   });
+
+  private projectConnection(
+    conn: FossFlowConnection,
+    nodeMap: Map<string, FossFlowNode>,
+    dpr: number,
+    fovFactor: number,
+    bounds: any,
+  ) {
+    const from = nodeMap.get(conn.fromId);
+    const to = nodeMap.get(conn.toId);
+    if (!from || !to) return null;
+
+    // Frustum Culling
+    if (bounds) {
+      const m = 5;
+      const o1 =
+        from.position.x < bounds.x - m ||
+        from.position.x > bounds.x + bounds.width + m ||
+        from.position.y < bounds.y - m ||
+        from.position.y > bounds.y + bounds.height + m;
+      const o2 =
+        to.position.x < bounds.x - m ||
+        to.position.x > bounds.x + bounds.width + m ||
+        to.position.y < bounds.y - m ||
+        to.position.y > bounds.y + bounds.height + m;
+      if (o1 && o2) return null;
+    }
+
+    const h = -0.05;
+    let rawPath = conn.path ? [...conn.path] : [from.position, to.position];
+    if (!conn.path && from.position.x !== to.position.x && from.position.y !== to.position.y) {
+      rawPath = [from.position, { x: to.position.x, y: from.position.y }, to.position];
+    }
+    if (rawPath.length < 2) return null;
+
+    const points3D = rawPath.map((p) => ({ ...p }));
+    const arrowLen = 0.35;
+    const baseOffset = 0.45;
+
+    const dx0 = points3D[1].x - points3D[0].x;
+    const dy0 = points3D[1].y - points3D[0].y;
+    const dist0 = Math.hypot(dx0, dy0);
+
+    const dir = conn.direction || 'forward';
+    const hasS = conn.directed && (dir === 'reverse' || dir === 'bi');
+    const hasE = conn.directed && (dir === 'forward' || dir === 'bi');
+
+    if (dist0 > 0) {
+      const offS = baseOffset + (hasS ? arrowLen : 0);
+      points3D[0] = {
+        x: rawPath[0].x + (dx0 / dist0) * offS,
+        y: rawPath[0].y + (dy0 / dist0) * offS,
+      };
+    }
+
+    let aP = '',
+      aPS = '';
+    const last = points3D.length - 1;
+    const dxE = points3D[last].x - points3D[last - 1].x;
+    const dyE = points3D[last].y - points3D[last - 1].y;
+    const distE = Math.hypot(dxE, dyE);
+
+    if (distE > 0) {
+      const offE = baseOffset + (hasE ? arrowLen : 0);
+      points3D[last] = {
+        x: rawPath[rawPath.length - 1].x - (dxE / distE) * offE,
+        y: rawPath[rawPath.length - 1].y - (dyE / distE) * offE,
+      };
+      if (hasE) {
+        const tip = {
+          x: rawPath[rawPath.length - 1].x - (dxE / distE) * baseOffset,
+          y: rawPath[rawPath.length - 1].y - (dyE / distE) * baseOffset,
+        };
+        const res = this.calculateIsometricArrow(tip, points3D[last - 1], h);
+        if (res) aP = res;
+      }
+    }
+
+    if (hasS && dist0 > 0) {
+      const tip = {
+        x: rawPath[0].x + (dx0 / dist0) * baseOffset,
+        y: rawPath[0].y + (dy0 / dist0) * baseOffset,
+      };
+      const res = this.calculateIsometricArrow(tip, points3D[1], h);
+      if (res) aPS = res;
+    }
+
+    const projected = points3D
+      .map((p) => {
+        const sp = this.engine.worldToScreenCached(p.x, h, p.y);
+        return sp ? { x: sp.x / dpr, y: sp.y / dpr } : null;
+      })
+      .filter((p): p is { x: number; y: number } => p !== null);
+
+    if (projected.length < 2) return null;
+
+    const fZ = this.engine.worldToScreenCached(rawPath[0].x, h, rawPath[0].y)?.z || 10;
+    const lZ =
+      this.engine.worldToScreenCached(
+        rawPath[rawPath.length - 1].x,
+        h,
+        rawPath[rawPath.length - 1].y,
+      )?.z || 10;
+    const scale = (3.5 * fovFactor) / ((fZ + lZ) / 2);
+
+    let pathData = '';
+    if (conn.style === 'rounded' && projected.length > 2) {
+      pathData = this.getRoundedOrthogonalPath(projected);
+    } else {
+      pathData = `M ${projected.map((p) => `${p.x},${p.y}`).join(' L ')}`;
+    }
+
+    return {
+      ...conn,
+      points: projected.map((p) => `${p.x},${p.y}`).join(' '),
+      pathData,
+      arrowPoints: aP,
+      arrowPointsStart: aPS,
+      scale: !isNaN(scale) ? scale : 1,
+      firstPoint: projected[0],
+      lastPoint: projected[projected.length - 1],
+    };
+  }
 
   // Computed signal for nodes with screen positions
   positionedNodes = computed(() => {
     this.frameCounter(); // Reactive dependency
+    if (!this.engine || !this.engine.initialized) return [];
 
-    // ==================== ADAPTIVE QUALITY ====================
-    // Get quality settings from engine
-    const qualitySettings = this.engine.frameController.getQualitySettings();
-    const maxNodes = qualitySettings.maxVisibleNodes;
+    const quality = this.engine.frameController.getQualitySettings();
+    const activeNodes = this.getPrioritizedActiveNodes(quality.maxVisibleNodes);
 
-    // Use GridService.activeNodes() directly for reactiveness
-    // This avoids race conditions with the Quadtree
+    const dpr = window.devicePixelRatio || 1;
+    const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
+    const fovFactor = 1.0 / Math.tan(fovRad / 2);
+
+    return activeNodes
+      .map((node) => this.projectNode(node, dpr, fovFactor, quality))
+      .filter((n): n is NonNullable<typeof n> => n !== null)
+      .sort((a, b) => b.z - a.z); // Sort back to front
+  });
+
+  private getPrioritizedActiveNodes(maxNodes: number): FossFlowNode[] {
     let activeNodes = this.gridService.activeNodes();
 
-    // If we have too many nodes, prioritize by distance to camera center
     if (activeNodes.length > maxNodes) {
       const centerX = this.engine.camera.target.x;
       const centerZ = this.engine.camera.target.z;
 
       // Sort by distance to camera target and take closest
-      activeNodes = activeNodes
-        .map((n: FossFlowNode) => ({
+      activeNodes = [...activeNodes]
+        .map((n) => ({
           node: n,
           dist: Math.hypot(n.position.x - centerX, n.position.y - centerZ),
         }))
-        .sort((a: any, b: any) => a.dist - b.dist)
+        .sort((a, b) => a.dist - b.dist)
         .slice(0, maxNodes)
-        .map((item: any) => item.node);
+        .map((item) => item.node);
     }
+    return activeNodes;
+  }
 
-    const dpr = isPlatformBrowser(this.platformId) ? window.devicePixelRatio || 1 : 1;
-    const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
-    const fovFactor = 1.0 / Math.tan(fovRad / 2);
-    const scaleBase = 3.6;
+  private projectNode(node: FossFlowNode, dpr: number, fovFactor: number, quality: any) {
+    const screenPos = this.engine.worldToScreenCached(node.position.x, -0.1, node.position.y);
+    if (!screenPos) return null;
 
-    // Adaptive LOD thresholds based on quality level
-    const lodHighThreshold = qualitySettings.lodHighThreshold;
-    const lodMediumThreshold = qualitySettings.lodMediumThreshold;
+    const scale = (3.6 * fovFactor) / screenPos.z;
 
-    return activeNodes
-      .map((node: FossFlowNode) => {
-        // Use cached projection when available for static nodes
-        const screenPos = this.engine.worldToScreenCached(node.position.x, -0.1, node.position.y);
-        if (!screenPos) return null;
+    // Adaptive LOD
+    let lod: 'low' | 'medium' | 'high' = 'high';
+    if (scale < quality.lodMediumThreshold) lod = 'low';
+    else if (scale < quality.lodHighThreshold) lod = 'medium';
 
-        const scale = (scaleBase * fovFactor) / screenPos.z;
-
-        // ==================== ADAPTIVE LOD ====================
-        // LOD thresholds adjust based on detected performance
-        let lod: 'low' | 'medium' | 'high' = 'high';
-        if (scale < lodMediumThreshold) lod = 'low';
-        else if (scale < lodHighThreshold) lod = 'medium';
-
-        return {
-          ...node,
-          screenX: screenPos.x / dpr,
-          screenY: screenPos.y / dpr,
-          z: screenPos.z,
-          scale: scale,
-          zIndex: 1000 - Math.floor(screenPos.z * 10),
-          lod,
-        };
-      })
-      .filter((n: any): n is NonNullable<typeof n> => n !== null)
-      .sort((a: any, b: any) => b.z - a.z); // Sort back to front
-  });
+    return {
+      ...node,
+      screenX: screenPos.x / dpr,
+      screenY: screenPos.y / dpr,
+      z: screenPos.z,
+      scale: scale,
+      zIndex: 1000 - Math.floor(screenPos.z * 10),
+      lod,
+    };
+  }
 
   // Computed signal for paint preview rectangle
   paintPreviewNodes = computed(() => {
     const start = this.dragStartPoint();
     const end = this.dragEndPoint();
-    if (!start || !end) return [];
-
-    // Safety check just in case signals are stale
-    if (!isPlatformBrowser(this.platformId) || !this.engine || !this.engine.initialized) return [];
-
-    const minX = Math.min(start.x, end.x);
-    const maxX = Math.max(start.x, end.x);
-    const minZ = Math.min(start.z, end.z);
-    const maxZ = Math.max(start.z, end.z);
+    if (!start || !end || !isPlatformBrowser(this.platformId) || !this.engine?.initialized)
+      return [];
 
     const nodes = [];
-    const dpr = isPlatformBrowser(this.platformId) ? window.devicePixelRatio || 1 : 1;
-    const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
-    const fovFactor = 1.0 / Math.tan(fovRad / 2);
-    // Use slightly larger scale or distinct style for preview
-    const scaleBase = 3.6;
+    const dpr = window.devicePixelRatio || 1;
+    const fov = this.getFovFactor();
 
-    for (let x = minX; x <= maxX; x++) {
-      for (let z = minZ; z <= maxZ; z++) {
-        const screenPos = this.engine.worldToScreen(x, -0.1, z);
-        if (screenPos) {
-          const scale = (scaleBase * fovFactor) / screenPos.z;
-          nodes.push({
-            x: screenPos.x / dpr,
-            y: screenPos.y / dpr,
-            z: screenPos.z,
-            scale,
-            zIndex: 1000 - Math.floor(screenPos.z * 10) + 1, // Slightly above?
-          });
-        }
+    for (let x = Math.min(start.x, end.x); x <= Math.max(start.x, end.x); x++) {
+      for (let z = Math.min(start.z, end.z); z <= Math.max(start.z, end.z); z++) {
+        const p = this.projectPreviewTile(x, z, dpr, fov);
+        if (p) nodes.push(p);
       }
     }
     return nodes.sort((a, b) => b.z - a.z);
@@ -431,44 +400,35 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
   // Preview for Selection Rectangle
   selectionPreviewNodes = computed(() => {
-    // Only show if dragging in Select Mode
-    if (this.editorMode() !== 'select' || !this.dragStartPoint() || !this.dragEndPoint()) {
-      return [];
-    }
+    if (this.editorMode() !== 'select' || !this.dragStartPoint() || !this.dragEndPoint()) return [];
 
     const start = this.dragStartPoint()!;
     const end = this.dragEndPoint()!;
-    const minX = Math.min(start.x, end.x);
-    const maxX = Math.max(start.x, end.x);
-    const minZ = Math.min(start.z, end.z);
-    const maxZ = Math.max(start.z, end.z);
-
     const nodes = [];
     const dpr = window.devicePixelRatio || 1;
-    const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
-    const fovFactor = 1.0 / Math.tan(fovRad / 2);
-    // Use slightly larger scale or distinct style for preview
-    const scaleBase = 3.6;
+    const fov = this.getFovFactor();
 
-    for (let x = minX; x <= maxX; x++) {
-      for (let z = minZ; z <= maxZ; z++) {
-        // Only visualize if node exists? Or just grid cells?
-        // For selection, usually we highlight everything in the box.
-        const screenPos = this.engine.worldToScreen(x, -0.1, z);
-        if (screenPos) {
-          const scale = (scaleBase * fovFactor) / screenPos.z;
-          nodes.push({
-            x: screenPos.x / dpr,
-            y: screenPos.y / dpr,
-            z: screenPos.z,
-            scale,
-            zIndex: 1000 - Math.floor(screenPos.z * 10) + 1,
-          });
-        }
+    for (let x = Math.min(start.x, end.x); x <= Math.max(start.x, end.x); x++) {
+      for (let z = Math.min(start.z, end.z); z <= Math.max(start.z, end.z); z++) {
+        const p = this.projectPreviewTile(x, z, dpr, fov);
+        if (p) nodes.push(p);
       }
     }
     return nodes.sort((a, b) => b.z - a.z);
   });
+
+  private projectPreviewTile(x: number, z: number, dpr: number, fovFactor: number) {
+    const sp = this.engine.worldToScreen(x, -0.1, z);
+    if (!sp) return null;
+    const scale = (3.6 * fovFactor) / sp.z;
+    return {
+      x: sp.x / dpr,
+      y: sp.y / dpr,
+      z: sp.z,
+      scale,
+      zIndex: 1000 - Math.floor(sp.z * 10) + 1,
+    };
+  }
 
   private animationFrameId: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -753,162 +713,99 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Paint helper
-  private performPaintAt(clientX: number, clientY: number): any | null {
-    if (!this.engine) return null; // Guard engine call
-    const canvas = this.canvasRef.nativeElement;
-    const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+  private performPaintAt(clientX: number, clientY: number): FossFlowNode | null {
+    const hit = this.getHitFromMouse(clientX, clientY);
+    if (!hit) return null;
 
-    const ray = this.engine.camera.getRay(x, y, rect.width, rect.height);
-    const hit = this.engine.camera.intersectPlaneXZ(ray);
+    const gx = Math.round(hit.x);
+    const gz = Math.round(hit.z);
 
-    if (hit) {
-      const gx = Math.round(hit.x);
-      const gz = Math.round(hit.z);
-      const node = this.gridService.getNodeAt(gx, gz);
+    if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
+      const changed = this.gridService.paintNode(gx, gz, {
+        objectEnabled: this.paintObjectEnabled(),
+        floorEnabled: this.paintFloorEnabled(),
+        shape: this.brushShape(),
+        objectColor: this.brushObjectColor(),
+        floorColor: this.brushFloorColor(),
+      });
 
-      if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
-        const updates: Partial<FossFlowNode> = {};
-        let hasUpdates = false;
-
-        // Object Paint Logic
-        if (this.paintObjectEnabled()) {
-          updates.active = true;
-          if (this.brushShape()) updates.shape3D = this.brushShape();
-          if (this.brushObjectColor()) updates.color = this.brushObjectColor();
-          hasUpdates = true;
-        }
-
-        // Floor Paint Logic
-        if (this.paintFloorEnabled() && this.brushFloorColor()) {
-          updates.floorColor = this.brushFloorColor();
-          hasUpdates = true;
-        }
-
-        if (hasUpdates) {
-          if (node) {
-            // Optimize: check if update is needed
-            let changed = false;
-            if (this.paintObjectEnabled()) {
-              if (!node.active || node.shape3D !== updates.shape3D || node.color !== updates.color)
-                changed = true;
-            }
-            if (this.paintFloorEnabled()) {
-              if (node.floorColor !== updates.floorColor) changed = true;
-            }
-
-            if (changed) {
-              this.pushState();
-              this.gridService.updateNode(node.id, updates);
-            }
-          } else {
-            // If node doesn't exist, it means it's outside the initialized grid.
-            // We should not create new nodes outside the grid bounds in paint mode.
-            // The gridService.initializeGrid creates a dense grid, so `node` should always be found if within bounds.
-            // If `node` is null, it's an invalid paint target.
-          }
-        }
+      if (changed) {
+        this.pushState();
       }
-      return node;
     }
-    return null;
+    return this.gridService.getNodeAt(gx, gz) || null;
   }
 
   onClick(event: MouseEvent) {
-    // Ignore clicks when modal is open
     if (this.showClearConfirm()) return;
-    if (!this.engine) return; // Guard engine call
-
     if (this.editorMode() === 'pan') return;
 
     const duration = Date.now() - this.mouseDownTime;
     if (duration > 250) return;
 
-    const canvas = this.canvasRef.nativeElement;
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    const ray = this.engine.camera.getRay(x, y, rect.width, rect.height);
-    const hit = this.engine.camera.intersectPlaneXZ(ray);
-
-    if (hit) {
-      const gx = Math.round(hit.x);
-      const gz = Math.round(hit.z);
-      const node = this.gridService.getNodeAt(gx, gz);
-
+    const hit = this.getHitFromMouse(event.clientX, event.clientY);
+    if (!hit) {
       if (this.editorMode() === 'select') {
-        const isMulti = event.ctrlKey || event.metaKey || event.shiftKey;
-        if (node) {
-          this.selectionService.selectNode(node.id, isMulti);
-        } else {
-          if (!isMulti) this.selectionService.selectNode(null);
-        }
-      } else if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
-        // For click in paint mode, if it's brush, it's already handled by performPaintAt in mousedown.
-        // If it's rectangle, we don't do anything on click, only on mouseup.
-        if (this.paintTool() === 'brush') {
-          this.performPaintAt(event.clientX, event.clientY);
-        }
-      } else if (this.editorMode() === 'connect') {
-        const hit = this.getHitFromMouse(event.clientX, event.clientY);
-        if (!hit) return;
+        this.selectionService.selectNode(null);
+      }
+      return;
+    }
 
-        const gx = Math.round(hit.x);
-        const gz = Math.round(hit.z);
-        const targetNode = this.gridService.getNodeAt(gx, gz);
-        const startNode = this.connectSourceId()
-          ? this.gridService.nodes().find((n) => n.id === this.connectSourceId())
-          : null;
+    const gx = Math.round(hit.x);
+    const gz = Math.round(hit.z);
+    const node = this.gridService.getNodeAt(gx, gz);
 
-        if (this.activePath().length === 0) {
-          // --- STARTING A CONNECTION ---
-          // Prevent starting if we just finished one on this same click/mouseup sequence
-          if (Date.now() - this.lastFinishTime < 200) return;
+    if (this.editorMode() === 'select') {
+      const isMulti = event.ctrlKey || event.metaKey || event.shiftKey;
+      this.selectionService.selectNode(node?.id || null, isMulti);
+    } else if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
+      if (this.paintTool() === 'brush') {
+        this.performPaintAt(event.clientX, event.clientY);
+      }
+    } else if (this.editorMode() === 'connect') {
+      this.handleConnectClick(gx, gz, node || null);
+    }
+  }
 
-          if (targetNode) {
-            this.activePath.set([targetNode.position]);
-            this.connectSourceId.set(targetNode.id);
-          } else {
-            this.activePath.set([{ x: gx, y: gz }]);
-            this.connectSourceId.set(null);
-          }
-        } else {
-          // --- PLACING WAYPOINT O CONFIRMING FINISH ---
-          const path = this.activePath();
-          const lastPoint = path[path.length - 1];
+  private handleConnectClick(gx: number, gz: number, targetNode: FossFlowNode | null) {
+    if (this.activePath().length === 0) {
+      // --- STARTING A CONNECTION ---
+      if (Date.now() - this.lastFinishTime < 200) return;
 
-          // Check if we are clicking on the same spot as the last waypoint
-          const isSameTargetPos = lastPoint.x === gx && lastPoint.y === gz;
-          // NEW: Finish directly if it's an active node (has an object)
-          const isTargetActive =
-            targetNode && targetNode.active && targetNode.id !== this.connectSourceId();
-
-          if (isSameTargetPos || isTargetActive) {
-            const finalPos = targetNode ? targetNode.position : { x: gx, y: gz };
-            const finalId = targetNode ? targetNode.id : null;
-
-            // Allow finishing if it's not the source or if it's a self-loop with path
-            if (finalId !== this.connectSourceId() || path.length > 2) {
-              this.finishConnection(finalPos, finalId);
-              return;
-            }
-          }
-
-          // Otherwise, add a waypoint
-          const newPoint = targetNode ? targetNode.position : { x: gx, y: gz };
-
-          // Avoid adding exact duplicate waypoints consecutively
-          if (newPoint.x !== lastPoint.x || newPoint.y !== lastPoint.y) {
-            this.activePath.update((p) => [...p, newPoint]);
-          }
-        }
+      if (targetNode) {
+        this.activePath.set([targetNode.position]);
+        this.connectSourceId.set(targetNode.id);
+      } else {
+        this.activePath.set([{ x: gx, y: gz }]);
+        this.connectSourceId.set(null);
       }
     } else {
-      this.selectionService.selectNode(null);
-      if (this.editorMode() !== 'connect') {
-        this.connectSourceId.set(null);
+      // --- PLACING WAYPOINT O CONFIRMING FINISH ---
+      const path = this.activePath();
+      const lastPoint = path[path.length - 1];
+
+      // Check if we are clicking on the same spot as the last waypoint
+      const isSameTargetPos = lastPoint.x === gx && lastPoint.y === gz;
+      // Finish directly if it's an active node (has an object)
+      const isTargetActive =
+        targetNode && targetNode.active && targetNode.id !== this.connectSourceId();
+
+      if (isSameTargetPos || isTargetActive) {
+        const finalPos = targetNode ? targetNode.position : { x: gx, y: gz };
+        const finalId = targetNode ? targetNode.id : null;
+
+        // Allow finishing if it's not the source or if it's a self-loop with path
+        if (finalId !== this.connectSourceId() || path.length > 2) {
+          this.finishConnection(finalPos, finalId);
+          return;
+        }
+      }
+
+      // Otherwise, add a waypoint
+      const newPoint = targetNode ? targetNode.position : { x: gx, y: gz };
+
+      if (newPoint.x !== lastPoint.x || newPoint.y !== lastPoint.y) {
+        this.activePath.update((p) => [...p, newPoint]);
       }
     }
   }
@@ -996,13 +893,12 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('window:mousemove', ['$event'])
   onMouseMove(event: MouseEvent) {
-    if (!this.engine) return; // Guard engine call
+    if (!this.engine) return;
     const canvas = this.canvasRef.nativeElement;
     const rect = canvas.getBoundingClientRect();
 
     // 1. Drag Logic
     if (this.isDragging) {
-      // Pan Logic
       if (
         this.editorMode() === 'pan' ||
         event.buttons === 4 ||
@@ -1016,79 +912,68 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      // Paint Drag Logic
-      if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
-        if (this.paintTool() === 'brush') {
-          this.performPaintAt(event.clientX, event.clientY);
-        } else {
-          // Rectangle update
-          const hit = this.getHitFromMouse(event.clientX, event.clientY);
-          if (hit) {
-            this.dragEndPoint.set({ x: Math.round(hit.x), z: Math.round(hit.z) });
+      const hit = this.getHitFromMouse(event.clientX, event.clientY);
+      if (hit) {
+        const hx = Math.round(hit.x);
+        const hz = Math.round(hit.z);
+
+        if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
+          if (this.paintTool() === 'brush') {
+            this.performPaintAt(event.clientX, event.clientY);
+          } else {
+            this.dragEndPoint.set({ x: hx, z: hz });
           }
-        }
-      } else if (this.editorMode() === 'select') {
-        // Rectangle update
-        const hit = this.getHitFromMouse(event.clientX, event.clientY);
-        if (hit) {
-          this.dragEndPoint.set({ x: Math.round(hit.x), z: Math.round(hit.z) });
+        } else if (this.editorMode() === 'select') {
+          this.dragEndPoint.set({ x: hx, z: hz });
         }
       }
     }
 
-    // 2. Hover Logic (only if not panning)
-    if (
+    // 2. Hover & Preview Logic
+    this.updateHoverAndPreview(event);
+  }
+
+  private updateHoverAndPreview(event: MouseEvent) {
+    const isInteractionMode =
       this.editorMode() === 'connect' ||
       this.editorMode() === 'select' ||
       this.editorMode() === 'paint' ||
-      this.editorMode() === 'paint-floor'
-    ) {
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      const ray = this.engine.camera.getRay(x, y, rect.width, rect.height);
-      const hit = this.engine.camera.intersectPlaneXZ(ray);
+      this.editorMode() === 'paint-floor';
 
-      if (hit) {
-        const gx = Math.round(hit.x);
-        const gz = Math.round(hit.z);
-
-        // Hover Node Logic
-        const node = this.gridService.getNodeAt(gx, gz);
-
-        if (node) {
-          this.hoveredNodeId.set(node.id);
-        } else {
-          this.hoveredNodeId.set(null);
-        }
-
-        // Update Preview Point for Ghost Line
-        if (this.editorMode() === 'connect') {
-          // Snap logic for connections
-          const connUnderMouse = this.connectionService.getConnectionAt(
-            gx,
-            gz,
-            this.gridService.connections(),
-            this.gridService.nodes(),
-          );
-
-          if (node) {
-            // Snap to node center
-            this.previewPoint.set({ x: node.position.x, y: node.position.y });
-          } else if (connUnderMouse) {
-            // Snap to connection tile center (Junction behavior)
-            this.previewPoint.set({ x: gx, y: gz });
-          } else {
-            // Smooth follow or grid snap
-            this.previewPoint.set({ x: hit.x, y: hit.z });
-          }
-        }
-      } else {
-        this.previewPoint.set(null);
-        this.hoveredNodeId.set(null);
-      }
-    } else {
+    if (!isInteractionMode || (this.isDragging && this.editorMode() === 'pan')) {
       this.previewPoint.set(null);
       this.hoveredNodeId.set(null);
+      return;
+    }
+
+    const hit = this.getHitFromMouse(event.clientX, event.clientY);
+    if (!hit) {
+      this.previewPoint.set(null);
+      this.hoveredNodeId.set(null);
+      return;
+    }
+
+    const gx = Math.round(hit.x);
+    const gz = Math.round(hit.z);
+    const node = this.gridService.getNodeAt(gx, gz);
+
+    this.hoveredNodeId.set(node?.id || null);
+
+    if (this.editorMode() === 'connect') {
+      const connUnderMouse = this.connectionService.getConnectionAt(
+        gx,
+        gz,
+        this.gridService.connections(),
+        this.gridService.nodes(),
+      );
+
+      if (node) {
+        this.previewPoint.set({ x: node.position.x, y: node.position.y });
+      } else if (connUnderMouse) {
+        this.previewPoint.set({ x: gx, y: gz });
+      } else {
+        this.previewPoint.set({ x: hit.x, y: hit.z });
+      }
     }
   }
 
@@ -1124,26 +1009,21 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     const minZ = Math.min(start.z, end.z);
     const maxZ = Math.max(start.z, end.z);
 
-    const nodes = this.gridService.nodes();
-    let selectedIds: string[] = [];
+    // Optimized bounds query using GridService spatial partitioning (Quadtree)
+    const bounds = { x: minX, y: minZ, width: maxX - minX, height: maxZ - minZ };
+    const nodesInBounds = this.gridService.getNodesInBounds(bounds);
 
-    // If additive, start with existing selection
+    let selectedIds: string[] = [];
     if (this.isAdditiveSelection) {
       selectedIds = [...this.selectionService.selectedNodeIds()];
     }
 
-    for (let x = minX; x <= maxX; x++) {
-      for (let z = minZ; z <= maxZ; z++) {
-        const node = this.gridService.getNodeAt(x, z);
-        if (node) {
-          if (!selectedIds.includes(node.id)) {
-            selectedIds.push(node.id);
-          }
-        }
+    for (const node of nodesInBounds) {
+      if (!selectedIds.includes(node.id)) {
+        selectedIds.push(node.id);
       }
     }
 
-    // Set selection
     this.selectionService.setSelection(selectedIds);
   }
 
@@ -1157,41 +1037,27 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     const minZ = Math.min(start.z, end.z);
     const maxZ = Math.max(start.z, end.z);
 
-    const nodes = this.gridService.nodes();
-    const shape = this.brushShape();
-    const objColor = this.brushObjectColor();
-    const floorColor = this.brushFloorColor();
+    const settings = {
+      objectEnabled: this.paintObjectEnabled(),
+      floorEnabled: this.paintFloorEnabled(),
+      shape: this.brushShape(),
+      objectColor: this.brushObjectColor(),
+      floorColor: this.brushFloorColor(),
+    };
 
-    const batchUpdates: { id: string; changes: Partial<FossFlowNode> }[] = [];
+    let batchChanged = false;
 
     for (let x = minX; x <= maxX; x++) {
       for (let z = minZ; z <= maxZ; z++) {
-        let node = this.gridService.getNodeAt(x, z);
-
-        if (node) {
-          // Update existing
-          const updates: Partial<FossFlowNode> = {};
-
-          if (this.paintObjectEnabled()) {
-            updates.active = true;
-            updates.shape3D = shape;
-            updates.color = objColor;
-          }
-
-          if (this.paintFloorEnabled()) {
-            updates.floorColor = floorColor;
-          }
-
-          if (Object.keys(updates).length > 0) {
-            batchUpdates.push({ id: node.id, changes: updates });
-          }
-        }
+        // We use paintNode for single consistency, but GridService could have a batchPaint
+        // For simplicity and to avoid spaghetti here, we just use the service logic
+        const changed = this.gridService.paintNode(x, z, settings);
+        if (changed) batchChanged = true;
       }
     }
 
-    if (batchUpdates.length > 0) {
+    if (batchChanged) {
       this.pushState();
-      this.gridService.updateManyNodes(batchUpdates);
     }
   }
 
@@ -1246,33 +1112,29 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectObject(svgName: string, node: any) {
-    if (!svgName) {
-      this.removeObject(node);
-      return;
-    }
-    this.updateNode(node.id, { shape3D: svgName, active: true });
+    this.updateNodeOrSelection(node.id, { shape3D: svgName, active: !!svgName });
   }
 
   removeObject(node: any) {
-    this.updateNode(node.id, { active: false });
+    this.updateNodeOrSelection(node.id, { active: false });
   }
 
   onFloorColorInput(event: Event, node: any) {
     const input = event.target as HTMLInputElement;
-    this.updateNode(node.id, { floorColor: input.value });
+    this.updateNodeOrSelection(node.id, { floorColor: input.value });
   }
 
   onObjectColorInput(event: Event, node: any) {
     const input = event.target as HTMLInputElement;
-    this.updateNode(node.id, { color: input.value });
+    this.updateNodeOrSelection(node.id, { color: input.value });
   }
 
   applyRecentColorToFloor(color: string, node: any) {
-    this.updateNode(node.id, { floorColor: color });
+    this.updateNodeOrSelection(node.id, { floorColor: color });
   }
 
   applyRecentColorToObject(color: string, node: any) {
-    this.updateNode(node.id, { color: color });
+    this.updateNodeOrSelection(node.id, { color: color });
   }
 
   updateNode(id: string, updates: Partial<FossFlowNode>) {
@@ -1432,6 +1294,21 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     this.pushState();
     const updates = selectedIds.map((id) => ({ id, changes }));
     this.gridService.updateManyNodes(updates);
+
+    // Update the singular selectedNode signal for immediate UI feedback in the sidebar
+    const current = this.selectedNode();
+    if (current && selectedIds.includes(current.id)) {
+      this.selectedNode.set({ ...current, ...changes });
+    }
+  }
+
+  private updateNodeOrSelection(id: string, updates: Partial<FossFlowNode>) {
+    const selectedIds = this.selectionService.selectedNodeIds();
+    if (selectedIds.includes(id)) {
+      this.updateSelectedNodes(updates);
+    } else {
+      this.updateNode(id, updates);
+    }
   }
 
   // Drag Endpoints Logic
@@ -1544,31 +1421,23 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   activePathData = computed(() => {
-    // Generate visual path for active drawing using rounded logic if active style is rounded
-    const points = this.positionedActivePathPoints(); // static points from clicks
-
-    // ADDING GHOST LINE: If we have a previewPoint, consider it the 'next' dynamic point
+    const pts = this.positionedActivePathPoints();
     const preview = this.previewPoint();
-    const dpr = window.devicePixelRatio || 1;
-    const style = this.connectionStyle();
+    if (pts.length === 0 && !preview) return '';
 
-    let allPoints = [...points];
+    const dpr = window.devicePixelRatio || 1;
+    let allPoints = [...pts];
 
     if (this.activePath().length > 0 && preview && this.engine.initialized) {
-      // Project preview point to screen
       const sp = this.engine.worldToScreen(preview.x, -0.05, preview.y);
-      if (sp) {
-        allPoints.push({ x: sp.x / dpr, y: sp.y / dpr });
-      }
+      if (sp) allPoints.push({ x: sp.x / dpr, y: sp.y / dpr });
     }
 
     if (allPoints.length < 2) return '';
 
-    if (style === 'rounded') {
-      return this.getRoundedOrthogonalPath(allPoints);
-    } else {
-      return `M ${allPoints.map((p) => `${p.x},${p.y}`).join(' L ')}`;
-    }
+    return this.connectionStyle() === 'rounded'
+      ? this.getRoundedOrthogonalPath(allPoints)
+      : `M ${allPoints.map((p) => `${p.x},${p.y}`).join(' L ')}`;
   });
 
   // Refactored positionedActivePath to return points array for reuse

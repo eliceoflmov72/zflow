@@ -123,15 +123,15 @@
 
 .ff-sidebar-base ::ng-deep .ff-object-gallery {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.8rem;
   margin-bottom: 1.5rem;
 }
 
 .ff-sidebar-base ::ng-deep .ff-gallery-item {
   aspect-ratio: 1;
-  background: #f8fafc;
-  border: 2px solid transparent;
+  background: transparent;
+  border: 2px solid #e2e8f0;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -143,14 +143,14 @@
 }
 
 .ff-sidebar-base ::ng-deep .ff-gallery-item:hover {
-  background: #eff6ff;
+  background: rgba(59, 130, 246, 0.05);
   border-color: rgba(59, 130, 246, 0.3);
   color: #3b82f6;
   transform: translateY(-2px);
 }
 
 .ff-sidebar-base ::ng-deep .ff-gallery-item.active {
-  background: #eff6ff;
+  background: rgba(59, 130, 246, 0.1);
   border-color: #3b82f6;
   color: #3b82f6;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
@@ -159,13 +159,16 @@
 .ff-sidebar-base ::ng-deep .ff-gallery-preview {
   width: 100%;
   height: 100%;
-  background-color: currentColor;
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
   -webkit-mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
+}
+
+.ff-sidebar-base ::ng-deep .ff-gallery-preview.mask-preview {
+  background-color: currentColor;
 }
 
 .ff-sidebar-base ::ng-deep .ff-recent-colors {

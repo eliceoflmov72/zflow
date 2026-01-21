@@ -71,7 +71,7 @@ import { Tab } from '../ui/tabs/tab';
       }
       .ff-gallery-item {
         aspect-ratio: 1;
-        background: #f8fafc;
+        background: transparent;
         border: 2px solid #e2e8f0;
         border-radius: 12px;
         cursor: pointer;
@@ -84,12 +84,12 @@ import { Tab } from '../ui/tabs/tab';
       }
       .ff-gallery-item:hover {
         border-color: #3b82f6;
-        background: #eff6ff;
+        background: rgba(59, 130, 246, 0.05);
         transform: translateY(-2px);
       }
       .ff-gallery-item.active {
         border-color: #3b82f6;
-        background: #eff6ff;
+        background: rgba(59, 130, 246, 0.1);
         color: #3b82f6;
       }
       .ff-gallery-preview {
@@ -100,7 +100,7 @@ import { Tab } from '../ui/tabs/tab';
         background-size: contain;
       }
       .mask-preview {
-        background-color: currentColor; /* Uses text color (gray or blue) for preview */
+        background-color: currentColor; /* Only for mask-based SVG previews */
         mask-size: contain;
         mask-repeat: no-repeat;
         mask-position: center;

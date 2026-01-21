@@ -135,6 +135,49 @@ export class GridService {
   }
 
   /**
+   * Paint a node with logic for object/floor updates and collision check.
+   * Returns true if a mutation actually occurred.
+   */
+  paintNode(
+    x: number,
+    y: number,
+    settings: {
+      objectEnabled: boolean;
+      floorEnabled: boolean;
+      shape?: string;
+      objectColor?: string;
+      floorColor?: string;
+    },
+  ): boolean {
+    const node = this.getNodeAt(x, y);
+    if (!node) return false;
+
+    const updates: Partial<FossFlowNode> = {};
+    let changed = false;
+
+    if (settings.objectEnabled) {
+      if (!node.active || node.shape3D !== settings.shape || node.color !== settings.objectColor) {
+        updates.active = true;
+        updates.shape3D = settings.shape;
+        updates.color = settings.objectColor;
+        changed = true;
+      }
+    }
+
+    if (settings.floorEnabled) {
+      if (node.floorColor !== settings.floorColor) {
+        updates.floorColor = settings.floorColor;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.updateNode(node.id, updates);
+    }
+    return changed;
+  }
+
+  /**
    * Update a single node
    */
   updateNode(id: string, updates: Partial<FossFlowNode>) {
