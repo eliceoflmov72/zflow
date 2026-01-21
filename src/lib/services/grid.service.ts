@@ -29,7 +29,9 @@ export class GridService {
 
   // Count nodes that count towards the "edit limit" (active objects or painted floors)
   modifiedNodesCount = computed(() => {
-    return this.nodes().filter((n) => n.active || (n.floorColor && n.floorColor.toLowerCase() !== '#ffffff')).length;
+    return this.nodes().filter(
+      (n) => n.active || (n.floorColor && n.floorColor.toLowerCase() !== '#ffffff'),
+    ).length;
   });
 
   // Spatial Partitioning: Quadtree for optimized visibility queries
@@ -162,11 +164,17 @@ export class GridService {
 
     // Check if adding an object would exceed limit
     const isAddingObject = settings.objectEnabled && !node.active;
-    const isPaintingFloor = settings.floorEnabled && (node.floorColor || '#ffffff').toLowerCase() === '#ffffff' && (settings.floorColor || '#ffffff').toLowerCase() !== '#ffffff';
-    
+    const isPaintingFloor =
+      settings.floorEnabled &&
+      (node.floorColor || '#ffffff').toLowerCase() === '#ffffff' &&
+      (settings.floorColor || '#ffffff').toLowerCase() !== '#ffffff';
+
     // If it's a completely new modification (neither object nor floor previously modified)
-    const isNodeCurrentlyModified = node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
-    const willBeModified = settings.objectEnabled || (settings.floorEnabled && (settings.floorColor || '#ffffff').toLowerCase() !== '#ffffff');
+    const isNodeCurrentlyModified =
+      node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
+    const willBeModified =
+      settings.objectEnabled ||
+      (settings.floorEnabled && (settings.floorColor || '#ffffff').toLowerCase() !== '#ffffff');
 
     if (!isNodeCurrentlyModified && willBeModified) {
       if (this.modifiedNodesCount() >= 60) {
@@ -205,12 +213,14 @@ export class GridService {
     if (!node) return;
 
     // Limit check for manual updates (from sidebars)
-    const isCurrentlyModified = node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
+    const isCurrentlyModified =
+      node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
     const willBeActive = updates.active !== undefined ? updates.active : node.active;
-    const willHavePaintedFloor = updates.floorColor !== undefined 
-      ? (updates.floorColor.toLowerCase() !== '#ffffff') 
-      : (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
-    
+    const willHavePaintedFloor =
+      updates.floorColor !== undefined
+        ? updates.floorColor.toLowerCase() !== '#ffffff'
+        : node.floorColor && node.floorColor.toLowerCase() !== '#ffffff';
+
     const willBeModified = willBeActive || willHavePaintedFloor;
 
     if (!isCurrentlyModified && willBeModified && this.modifiedNodesCount() >= 60) {
@@ -319,22 +329,25 @@ export class GridService {
     }
 
     // Block direct connection of adjacent nodes (must go around)
-    const dx = Math.abs(fromPos.x - toPos.x);
-    const dy = Math.abs(fromPos.y - toPos.y);
-    const isAdjacent = dx <= 1 && dy <= 1;
+    // Skip this check for self-loops (fromId === toId) since ConnectionService handles that case
+    if (fromId !== toId) {
+      const dx = Math.abs(fromPos.x - toPos.x);
+      const dy = Math.abs(fromPos.y - toPos.y);
+      const isAdjacent = dx <= 1 && dy <= 1;
 
-    const uniquePoints = customPath
-      ? customPath.filter((p, i) => {
-          if (i === 0) return true;
-          return p.x !== customPath[i - 1].x || p.y !== customPath[i - 1].y;
-        })
-      : [];
+      const uniquePoints = customPath
+        ? customPath.filter((p, i) => {
+            if (i === 0) return true;
+            return p.x !== customPath[i - 1].x || p.y !== customPath[i - 1].y;
+          })
+        : [];
 
-    if (isAdjacent && (!uniquePoints || uniquePoints.length <= 2)) {
-      console.warn(
-        '[zflow][grid] Blocking direct connection between adjacent nodes. Use waypoints to go around.',
-      );
-      return '';
+      if (isAdjacent && (!uniquePoints || uniquePoints.length <= 2)) {
+        console.warn(
+          '[zflow][grid] Blocking direct connection between adjacent nodes. Use waypoints to go around.',
+        );
+        return '';
+      }
     }
 
     /* 

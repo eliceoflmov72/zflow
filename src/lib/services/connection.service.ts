@@ -88,12 +88,19 @@ export class ConnectionService {
       };
     }
 
-    const id = `manual-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `manual-${Math.random().toString(36).substring(2, 11)}`;
     const fromNode = nodes.find((n) => n.id === fromId);
     const toNode = nodes.find((n) => n.id === toId);
 
+    let path = customPath ? customPath.map((p) => ({ ...p })) : undefined;
+
     if (fromId === toId && fromNode) {
-      const loop = this.generateSelfLoopPath(fromNode.position, gridSize);
+      if (path && path.length > 2) {
+        // Use the manually drawn path for the self-loop (already densified/mapped above)
+        path = this.densifyPath(path);
+      } else {
+        path = this.generateSelfLoopPath(fromNode.position, gridSize);
+      }
       return {
         id,
         fromId,
@@ -101,13 +108,12 @@ export class ConnectionService {
         directed,
         direction,
         color: color || '#3b82f6',
-        path: loop,
+        path,
         style,
         lineType,
       };
     }
 
-    let path = customPath ? customPath.map((p) => ({ ...p })) : undefined;
     if (fromNode && toNode) {
       if (!path) {
         // Respect routing mode or allow diagonals by default for efficiency
