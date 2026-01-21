@@ -1,6 +1,6 @@
 .ff-performance-stats {
   position: absolute;
-  bottom: 6.5rem; /* Moved up to clear bottom toolbar */
+  bottom: 1.5rem;
   left: 1.5rem;
   display: flex;
   align-items: center;
