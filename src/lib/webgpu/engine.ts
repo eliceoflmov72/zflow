@@ -442,7 +442,8 @@ export class WebGPUEngine {
     let hash = `${nodes.length}_${selectedId || ''}`;
     for (let i = 0; i < sampleSize; i++) {
       const n = nodes[i];
-      if (n.active) {
+      const hasFloor = n.floorColor && n.floorColor.toLowerCase() !== '#ffffff';
+      if (n.active || hasFloor) {
         hash += `|${n.id}:${n.position.x},${n.position.y}:${n.floorColor || ''}`;
       }
     }
@@ -460,7 +461,9 @@ export class WebGPUEngine {
     let offset = 0;
     for (let i = 0; i < count; i++) {
       const n = nodes[i];
-      if (n.active) {
+      const hasFloor = n.floorColor && n.floorColor.toLowerCase() !== '#ffffff';
+
+      if (n.active || hasFloor) {
         const isSelected = n.id === selectedId;
         const color = n.floorColor ? this.parseHexColor(n.floorColor) : [1.0, 1.0, 1.0, 1.0];
 

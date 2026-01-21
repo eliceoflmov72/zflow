@@ -34,6 +34,28 @@ export class GridService {
     ).length;
   });
 
+  // Computed signal for used colors in the grid (nodes and connections)
+  usedColors = computed(() => {
+    const nodes = this.nodes();
+    const connections = this.connections();
+
+    // Default palette
+    const defaults = ['#3b82f6', '#FFFFFF', '#e2e8f0', '#1e293b'];
+    const colors = new Set<string>(defaults.map((c) => c.toLowerCase()));
+
+    // Collect used colors
+    nodes.forEach((n) => {
+      if (n.color) colors.add(n.color.toLowerCase());
+      if (n.floorColor) colors.add(n.floorColor.toLowerCase());
+    });
+
+    connections.forEach((c) => {
+      if (c.color) colors.add(c.color.toLowerCase());
+    });
+
+    return Array.from(colors);
+  });
+
   // Spatial Partitioning: Quadtree for optimized visibility queries
   private quadtree = new Quadtree<NodeItem>({ x: -5000, y: -5000, width: 10000, height: 10000 });
 

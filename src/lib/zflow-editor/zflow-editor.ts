@@ -97,27 +97,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     'isometric-prism.svg',
   ]);
   lastFinishTime = 0; // Timestamp to prevent immediate restart
-  recentColors = computed(() => {
-    // Reactive dependency on nodes and connections
-    const nodes = this.gridService.nodes();
-    const connections = this.gridService.connections();
-
-    // Default palette
-    const defaults = ['#3b82f6', '#FFFFFF', '#e2e8f0', '#1e293b'];
-    const colors = new Set<string>(defaults.map((c) => c.toLowerCase()));
-
-    // Collect used colors
-    nodes.forEach((n) => {
-      if (n.color) colors.add(n.color.toLowerCase());
-      if (n.floorColor) colors.add(n.floorColor.toLowerCase());
-    });
-
-    connections.forEach((c) => {
-      if (c.color) colors.add(c.color.toLowerCase());
-    });
-
-    return Array.from(colors);
-  });
+  recentColors = this.gridService.usedColors;
 
   zoomLabel = signal(0); // 0% as default relative zoom
   targetRotation = signal(45);
