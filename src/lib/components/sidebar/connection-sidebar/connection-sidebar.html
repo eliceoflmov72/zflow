@@ -37,6 +37,26 @@
     </button>
   </div>
 
+  <label class="ff-control-label" style="margin-top: 1rem;">Estilo de Ruta</label>
+  <div class="ff-segmented-control">
+    <button
+      class="ff-segment-btn"
+      [class.active]="conn.style === 'straight'"
+      (click)="updateConnection.emit({ id: conn.id, updates: { style: 'straight' } })"
+      title="Ruta Recta"
+    >
+      Recta
+    </button>
+    <button
+      class="ff-segment-btn"
+      [class.active]="conn.style === 'rounded'"
+      (click)="updateConnection.emit({ id: conn.id, updates: { style: 'rounded' } })"
+      title="Ruta Curva"
+    >
+      Curva
+    </button>
+  </div>
+
   <label class="ff-control-label" style="margin-top: 1rem;">Estilo de Línea</label>
   <div class="ff-segmented-control">
     <button

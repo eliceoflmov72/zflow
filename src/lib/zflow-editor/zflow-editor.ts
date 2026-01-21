@@ -60,6 +60,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   gridService = inject(GridService);
   selectionService = inject(SelectionService);
   historyService = inject(HistoryService);
+  connectionService = inject(ConnectionService);
   private cdr = inject(ChangeDetectorRef);
   private platformId = inject(PLATFORM_ID);
   private engine!: WebGPUEngine;
@@ -96,8 +97,8 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     'isometric-cylinder.svg',
     'isometric-cone.svg',
     'isometric-prism.svg',
-    'module-box.svg',
   ]);
+  lastFinishTime = 0; // Timestamp to prevent immediate restart
   recentColors = computed(() => {
     // Reactive dependency on nodes and connections
     const nodes = this.gridService.nodes();
@@ -851,50 +852,92 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
           this.performPaintAt(event.clientX, event.clientY);
         }
       } else if (this.editorMode() === 'connect') {
-        if (node) {
-          const path = this.activePath();
-          if (path.length === 0) {
-            // Start of a new path
-            this.activePath.set([node.position]);
-            this.connectSourceId.set(node.id);
-          } else {
-            // Check if we clicked the same node twice or a final node to finish
-            const lastPoint = path[path.length - 1];
-            const isClickingLast =
-              lastPoint.x === node.position.x && lastPoint.y === node.position.y;
+        const hit = this.getHitFromMouse(event.clientX, event.clientY);
+        if (!hit) return;
 
-            if (isClickingLast || (node.active && this.connectSourceId() !== node.id)) {
-              // Finalize connection
-              if (path.length > 1 || (path.length === 1 && this.connectSourceId())) {
-                const finalPath = isClickingLast ? path : [...path, node.position];
-                this.pushState();
-                this.gridService.addConnection(
-                  this.connectSourceId()!,
-                  node.id,
-                  true,
-                  finalPath,
-                  this.connectionStyle(),
-                  this.currentLineType(),
-                );
-              }
-              this.activePath.set([]);
-              this.connectSourceId.set(null);
-              this.previewPoint.set(null);
-            } else {
-              // Add waypoint to zig-zag
-              this.activePath.update((p) => [...p, node.position]);
-            }
+        const gx = Math.round(hit.x);
+        const gz = Math.round(hit.z);
+        const targetNode = this.gridService.getNodeAt(gx, gz);
+        const startNode = this.connectSourceId()
+          ? this.gridService.nodes().find((n) => n.id === this.connectSourceId())
+          : null;
+
+        if (this.activePath().length === 0) {
+          // --- STARTING A CONNECTION ---
+          // Prevent starting if we just finished one on this same click/mouseup sequence
+          if (Date.now() - this.lastFinishTime < 200) return;
+
+          if (targetNode) {
+            this.activePath.set([targetNode.position]);
+            this.connectSourceId.set(targetNode.id);
+          } else {
+            this.activePath.set([{ x: gx, y: gz }]);
+            this.connectSourceId.set(null);
           }
         } else {
-          this.activePath.set([]);
-          this.connectSourceId.set(null);
-          this.previewPoint.set(null);
+          // --- PLACING WAYPOINT O CONFIRMING FINISH ---
+          const path = this.activePath();
+          const lastPoint = path[path.length - 1];
+
+          // Check if we are clicking on the same spot as the last waypoint
+          const isSameTargetPos = lastPoint.x === gx && lastPoint.y === gz;
+          // NEW: Finish directly if it's an active node (has an object)
+          const isTargetActive =
+            targetNode && targetNode.active && targetNode.id !== this.connectSourceId();
+
+          if (isSameTargetPos || isTargetActive) {
+            const finalPos = targetNode ? targetNode.position : { x: gx, y: gz };
+            const finalId = targetNode ? targetNode.id : null;
+
+            // Allow finishing if it's not the source or if it's a self-loop with path
+            if (finalId !== this.connectSourceId() || path.length > 2) {
+              this.finishConnection(finalPos, finalId);
+              return;
+            }
+          }
+
+          // Otherwise, add a waypoint
+          const newPoint = targetNode ? targetNode.position : { x: gx, y: gz };
+
+          // Avoid adding exact duplicate waypoints consecutively
+          if (newPoint.x !== lastPoint.x || newPoint.y !== lastPoint.y) {
+            this.activePath.update((p) => [...p, newPoint]);
+          }
         }
       }
     } else {
       this.selectionService.selectNode(null);
-      this.connectSourceId.set(null);
+      if (this.editorMode() !== 'connect') {
+        this.connectSourceId.set(null);
+      }
     }
+  }
+
+  /**
+   * Helper to finalize a connection and reset state correctly
+   */
+  private finishConnection(targetPos: { x: number; y: number }, targetId: string | null = null) {
+    const path = this.activePath();
+    const finalPath = [...path, targetPos];
+
+    this.pushState();
+    this.gridService.addConnection(
+      this.connectSourceId() || `point-${path[0].x}-${path[0].y}`,
+      targetId || `point-${targetPos.x}-${targetPos.y}`,
+      true,
+      finalPath,
+      this.connectionStyle(),
+      this.currentLineType(),
+      undefined,
+      undefined,
+      true, // Diagonals always allowed now
+    );
+
+    // Reset state and do NOT start a new connection automatically
+    this.activePath.set([]);
+    this.connectSourceId.set(null);
+    this.previewPoint.set(null);
+    this.lastFinishTime = Date.now();
   }
 
   onMouseDown(event: MouseEvent) {
@@ -1020,10 +1063,22 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
         // Update Preview Point for Ghost Line
         if (this.editorMode() === 'connect') {
-          // If hovering a valid target node (not self), snap to it. Otherwise follow cursor smoothly.
-          if (node && this.activePath().length > 0 && this.connectSourceId() !== node.id) {
+          // Snap logic for connections
+          const connUnderMouse = this.connectionService.getConnectionAt(
+            gx,
+            gz,
+            this.gridService.connections(),
+            this.gridService.nodes(),
+          );
+
+          if (node) {
+            // Snap to node center
             this.previewPoint.set({ x: node.position.x, y: node.position.y });
+          } else if (connUnderMouse) {
+            // Snap to connection tile center (Junction behavior)
+            this.previewPoint.set({ x: gx, y: gz });
           } else {
+            // Smooth follow or grid snap
             this.previewPoint.set({ x: hit.x, y: hit.z });
           }
         }
@@ -1051,42 +1106,6 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
         if (start && end && (start.x !== end.x || start.z !== end.z)) {
           this.applySelectionRectangle();
         }
-      }
-    }
-
-    // Complete connection on mouse up (drop) if we are tracing an active path and hovering a valid target
-    if (
-      this.editorMode() === 'connect' &&
-      this.activePath().length > 0 &&
-      this.connectSourceId() &&
-      this.hoveredNodeId() &&
-      this.hoveredNodeId() !== this.connectSourceId()
-    ) {
-      const nodes = this.gridService.nodes();
-      const target = nodes.find((n) => n.id === this.hoveredNodeId());
-      if (target && target.active) {
-        const path = this.activePath();
-        const last = path[path.length - 1];
-        const finalPath =
-          last && last.x === target.position.x && last.y === target.position.y
-            ? path
-            : [...path, target.position];
-
-        if (finalPath.length > 1) {
-          this.pushState();
-          this.gridService.addConnection(
-            this.connectSourceId()!,
-            target.id,
-            true,
-            finalPath,
-            this.connectionStyle(),
-            this.currentLineType(),
-          );
-        }
-
-        this.activePath.set([]);
-        this.connectSourceId.set(null);
-        this.previewPoint.set(null);
       }
     }
 
@@ -1344,6 +1363,18 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
   onConnectionClick(event: MouseEvent, id: string) {
     event.stopPropagation();
+
+    if (this.editorMode() === 'connect' && this.activePath().length > 0) {
+      // Joining a connection via click
+      const hit = this.getHitFromMouse(event.clientX, event.clientY);
+      if (hit) {
+        const gx = Math.round(hit.x);
+        const gz = Math.round(hit.z);
+        this.finishConnection({ x: gx, y: gz }, null);
+        return;
+      }
+    }
+
     this.selectionService.selectConnection(id);
   }
 

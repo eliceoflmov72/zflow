@@ -208,12 +208,14 @@ export class GridService {
     lineType: 'solid' | 'dashed' = 'solid',
     color?: string,
     direction?: 'forward' | 'reverse' | 'bi',
+    allowDiagonals: boolean = true,
   ): string {
     if (!fromId || !toId) {
       console.debug('[zflow][grid] addConnection blocked: invalid endpoints', { fromId, toId });
       return '';
     }
 
+    /* 
     const existing = this.connections().some((c) => {
       const same = c.fromId === fromId && c.toId === toId;
       const reverse = !directed && c.fromId === toId && c.toId === fromId;
@@ -223,15 +225,41 @@ export class GridService {
       console.debug('[zflow][grid] addConnection blocked: duplicate connection', { fromId, toId });
       return '';
     }
+    */
 
     const nodes = this.nodes();
     const fromNode = nodes.find((n) => n.id === fromId);
     const toNode = nodes.find((n) => n.id === toId);
-    if (!fromNode || !toNode) {
-      console.debug('[zflow][grid] addConnection blocked: missing node', { fromId, toId });
+    // We allow fromId/toId to be 'point-x-y' strings if nodes are null
+    // This supports starting/ending at arbitrary tile coordinates
+    const fromPos = fromNode?.position || this.parsePointId(fromId);
+    const toPos = toNode?.position || this.parsePointId(toId);
+
+    if (!fromPos || !toPos) {
+      console.debug('[zflow][grid] addConnection blocked: missing position', { fromId, toId });
       return '';
     }
 
+    // Block direct connection of adjacent nodes (must go around)
+    const dx = Math.abs(fromPos.x - toPos.x);
+    const dy = Math.abs(fromPos.y - toPos.y);
+    const isAdjacent = dx <= 1 && dy <= 1;
+
+    const uniquePoints = customPath
+      ? customPath.filter((p, i) => {
+          if (i === 0) return true;
+          return p.x !== customPath[i - 1].x || p.y !== customPath[i - 1].y;
+        })
+      : [];
+
+    if (isAdjacent && (!uniquePoints || uniquePoints.length <= 2)) {
+      console.warn(
+        '[zflow][grid] Blocking direct connection between adjacent nodes. Use waypoints to go around.',
+      );
+      return '';
+    }
+
+    /* 
     const fromDegree = this.connections().filter(
       (c) => c.fromId === fromId || c.toId === fromId,
     ).length;
@@ -250,6 +278,7 @@ export class GridService {
       });
       return '';
     }
+    */
 
     const newConnection = this.connectionService.createConnection(
       fromId,
@@ -262,6 +291,7 @@ export class GridService {
       lineType,
       color,
       direction,
+      true, // Always allow diagonals
     );
     this.connections.update((conns) => [...conns, newConnection]);
     this.storageService.saveState(this.nodes(), this.connections());
@@ -284,5 +314,12 @@ export class GridService {
     const updated = this.connectionService.removeConnection(id, this.connections());
     this.connections.set(updated);
     this.storageService.saveState(this.nodes(), this.connections());
+  }
+
+  private parsePointId(id: string): { x: number; y: number } | null {
+    if (!id || !id.startsWith('point-')) return null;
+    const parts = id.split('-');
+    if (parts.length < 3) return null;
+    return { x: parseInt(parts[1], 10), y: parseInt(parts[2], 10) };
   }
 }

@@ -66,10 +66,11 @@ export class ConnectionService {
     gridSize: { width: number; height: number },
     directed = false,
     customPath?: { x: number; y: number }[],
-    style: 'straight' | 'rounded' = 'straight',
-    lineType: 'solid' | 'dashed' = 'solid',
+    style: 'straight' | 'rounded' = 'straight', // Keep original parameters for now, as the diff was ambiguous
+    lineType: 'solid' | 'dashed' = 'solid', // Keep original parameters for now
     color?: string,
     direction?: 'forward' | 'reverse' | 'bi',
+    allowDiagonals: boolean = true,
   ): FossFlowConnection {
     if (!fromId || !toId) {
       this.debugLog('createConnection: invalid endpoints', { fromId, toId });
@@ -109,7 +110,8 @@ export class ConnectionService {
     let path = customPath ? customPath.map((p) => ({ ...p })) : undefined;
     if (fromNode && toNode) {
       if (!path) {
-        path = this.findPath(fromNode, toNode, nodes, gridSize) || undefined;
+        // Respect routing mode or allow diagonals by default for efficiency
+        path = this.findPath(fromNode, toNode, nodes, gridSize, allowDiagonals) || undefined;
       } else {
         const densified = this.densifyPath(path);
         const isOnlyEndpoints = path.length <= 2;
@@ -163,20 +165,37 @@ export class ConnectionService {
     ];
   }
 
+  /**
+   * Find if there's a connection passing through a given tile
+   */
+  getConnectionAt(
+    x: number,
+    y: number,
+    connections: FossFlowConnection[],
+    nodes: FossFlowNode[],
+  ): FossFlowConnection | undefined {
+    return connections.find((conn) => {
+      const path = conn.path || this.calculateDefaultPath(conn, nodes);
+      return path?.some((p) => Math.round(p.x) === x && Math.round(p.y) === y);
+    });
+  }
+
   private densifyPath(points: { x: number; y: number }[]): { x: number; y: number }[] {
     if (points.length < 2) return points;
     const out: { x: number; y: number }[] = [{ x: points[0].x, y: points[0].y }];
+
     for (let i = 1; i < points.length; i++) {
       const prev = out[out.length - 1];
       const next = points[i];
       let cx = prev.x;
       let cy = prev.y;
-      while (cx !== next.x) {
-        cx += Math.sign(next.x - cx);
-        out.push({ x: cx, y: cy });
-      }
-      while (cy !== next.y) {
-        cy += Math.sign(next.y - cy);
+
+      // Move diagonally first as much as possible, then straight
+      while (cx !== next.x || cy !== next.y) {
+        const dx = Math.sign(next.x - cx);
+        const dy = Math.sign(next.y - cy);
+        cx += dx;
+        cy += dy;
         out.push({ x: cx, y: cy });
       }
     }
@@ -196,9 +215,10 @@ export class ConnectionService {
       nodeByTile.set(`${n.position.x},${n.position.y}`, n.id);
     }
 
+    // Only check middle points to allow starting/ending at node center
     for (let i = 1; i < path.length - 1; i++) {
       const p = path[i];
-      const idAtTile = nodeByTile.get(`${p.x},${p.y}`);
+      const idAtTile = nodeByTile.get(`${Math.round(p.x)},${Math.round(p.y)}`);
       if (idAtTile && idAtTile !== fromId && idAtTile !== toId) return true;
     }
     return false;
@@ -217,34 +237,35 @@ export class ConnectionService {
     for (let i = 0; i < waypoints.length - 1; i++) {
       const start = waypoints[i];
       const end = waypoints[i + 1];
-      const seg = this.findPathBetweenPositions(start, end, nodes, gridSize, fromId, toId);
+      // Use A* between segments with diagonal capability
+      const seg = this.findPathBetweenPositions(start, end, nodes, gridSize, fromId, toId, true);
       if (!seg || seg.length === 0) return null;
 
-      // Stitch segments: avoid duplicating the joint point
       if (i === 0) result = seg;
       else result = [...result, ...seg.slice(1)];
-    }
-
-    if (this.pathCollidesWithNodes(result, nodes, fromId, toId)) {
-      this.debugLog('routeThroughWaypoints: routed path still collides', { fromId, toId });
-      return null;
     }
 
     return result;
   }
 
-  /**
-   * A* Implementation to avoid active nodes (obstacles)
-   */
   private findPath(
     from: FossFlowNode,
     to: FossFlowNode,
     nodes: FossFlowNode[],
     gridSize: { width: number; height: number },
+    allowDiagonals: boolean = true,
   ): { x: number; y: number }[] | null {
     const start = from.position;
     const end = to.position;
-    return this.findPathBetweenPositions(start, end, nodes, gridSize, from.id, to.id);
+    return this.findPathBetweenPositions(
+      start,
+      end,
+      nodes,
+      gridSize,
+      from.id,
+      to.id,
+      allowDiagonals,
+    );
   }
 
   private findPathBetweenPositions(
@@ -254,6 +275,7 @@ export class ConnectionService {
     gridSize: { width: number; height: number },
     fromId: string,
     toId: string,
+    allowDiagonals: boolean = true,
   ): { x: number; y: number }[] | null {
     const openSet: { x: number; y: number; g: number; f: number; parent: any }[] = [];
     const closedSet = new Set<string>();
@@ -263,8 +285,10 @@ export class ConnectionService {
     while (openSet.length > 0) {
       openSet.sort((a, b) => a.f - b.f);
       const current = openSet.shift()!;
-      if (current.x === end.x && current.y === end.y) {
-        // Reconstruct path
+      if (
+        Math.round(current.x) === Math.round(end.x) &&
+        Math.round(current.y) === Math.round(end.y)
+      ) {
         const path = [];
         let temp: any = current;
         while (temp) {
@@ -274,7 +298,7 @@ export class ConnectionService {
         return path.reverse();
       }
 
-      closedSet.add(`${current.x},${current.y}`);
+      closedSet.add(`${Math.round(current.x)},${Math.round(current.y)}`);
 
       const neighbors = [
         { x: current.x + 1, y: current.y },
@@ -283,31 +307,39 @@ export class ConnectionService {
         { x: current.x, y: current.y - 1 },
       ];
 
-      for (const neighbor of neighbors) {
-        if (closedSet.has(`${neighbor.x},${neighbor.y}`)) continue;
+      if (allowDiagonals) {
+        neighbors.push(
+          { x: current.x + 1, y: current.y + 1 },
+          { x: current.x - 1, y: current.y - 1 },
+          { x: current.x + 1, y: current.y - 1 },
+          { x: current.x - 1, y: current.y + 1 },
+        );
+      }
 
-        // Obstacle check: is tile active and NOT the start or end?
+      for (const neighbor of neighbors) {
+        const nx = Math.round(neighbor.x);
+        const ny = Math.round(neighbor.y);
+
+        if (closedSet.has(`${nx},${ny}`)) continue;
+
+        if (nx < 0 || nx >= gridSize.width || ny < 0 || ny >= gridSize.height) continue;
+
         const isObstacle = nodes.some(
           (n) =>
             n.active &&
-            n.position.x === neighbor.x &&
-            n.position.y === neighbor.y &&
+            Math.round(n.position.x) === nx &&
+            Math.round(n.position.y) === ny &&
             n.id !== fromId &&
             n.id !== toId,
         );
         if (isObstacle) continue;
 
-        // Out of bounds
-        if (
-          neighbor.x < 0 ||
-          neighbor.x >= gridSize.width ||
-          neighbor.y < 0 ||
-          neighbor.y >= gridSize.height
-        )
-          continue;
+        // Diagonal cost is sqrt(2) approx 1.4, straight is 1
+        const isDiagonal = neighbor.x !== current.x && neighbor.y !== current.y;
+        const moveCost = isDiagonal ? 1.414 : 1;
+        const gScore = current.g + moveCost;
 
-        const gScore = current.g + 1;
-        let existing = openSet.find((o) => o.x === neighbor.x && o.y === neighbor.y);
+        let existing = openSet.find((o) => Math.round(o.x) === nx && Math.round(o.y) === ny);
 
         if (!existing) {
           openSet.push({
@@ -327,12 +359,13 @@ export class ConnectionService {
   }
 
   private heuristic(a: { x: number; y: number }, b: { x: number; y: number }) {
-    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+    // Octile distance for diagonal movement
+    const dx = Math.abs(a.x - b.x);
+    const dy = Math.abs(a.y - b.y);
+    const F = 1.414 - 1;
+    return dx < dy ? F * dx + dy : F * dy + dx;
   }
 
-  /**
-   * Update a connection (returns the updated connection)
-   */
   updateConnection(
     id: string,
     updates: Partial<FossFlowConnection>,
@@ -341,9 +374,6 @@ export class ConnectionService {
     return connections.map((c) => (c.id === id ? { ...c, ...updates } : c));
   }
 
-  /**
-   * Remove a connection (returns the filtered connections)
-   */
   removeConnection(id: string, connections: FossFlowConnection[]): FossFlowConnection[] {
     return connections.filter((c) => c.id !== id);
   }
