@@ -1116,7 +1116,13 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   removeObject(node: any) {
-    this.updateNodeOrSelection(node.id, { active: false });
+    // Reset the node to default state (no object, default floor color)
+    this.updateNodeOrSelection(node.id, {
+      active: false,
+      floorColor: '#ffffff',
+      color: '#3b82f6',
+      shape3D: 'isometric-cube.svg',
+    });
   }
 
   onFloorColorInput(event: Event, node: any) {
@@ -1270,18 +1276,24 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     } else {
       const selectedIds = this.selectionService.selectedNodeIds();
       if (selectedIds.length > 0) {
-        // "Removing" object means setting active=false.
+        // "Removing" object means setting active=false AND resetting floorColor.
         // We use updateManyNodes.
         this.pushState();
-        const updates = selectedIds.map((id) => ({ id, changes: { active: false } }));
+        const updates = selectedIds.map((id) => ({
+          id,
+          changes: {
+            active: false,
+            floorColor: '#ffffff', // Reset floor color to default
+            color: '#3b82f6', // Reset object color to default
+            shape3D: 'isometric-cube.svg', // Reset shape to default
+          },
+        }));
         this.gridService.updateManyNodes(updates);
 
         // Clear engine cache for these specific nodes to ensure fresh state if replaced
         if (this.engine) this.engine.clearProjectionCache();
 
-        // Deselect or keep selected? Usually keep selected so you can undo easily or see they are gone (but they are hidden).
-        // If active=false, they disappear from view (except maybe grid).
-        // Let's clear selection.
+        // Clear selection.
         this.selectionService.setSelection([]);
       }
     }

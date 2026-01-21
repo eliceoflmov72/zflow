@@ -86,8 +86,16 @@ export class GridService {
     const savedNodes = this.storageService.loadNodes();
     const savedConns = this.storageService.loadConnections();
 
-    if (savedNodes) {
-      this.nodes.set(savedNodes);
+    if (savedNodes && savedNodes.length > 0) {
+      // Normalize loaded nodes to ensure consistent floorColor format
+      const normalizedNodes = savedNodes.map((n) => ({
+        ...n,
+        floorColor: (n.floorColor || '#ffffff').toLowerCase(),
+        color: n.color || '#3b82f6',
+        shape3D: n.shape3D || 'isometric-cube.svg',
+        active: n.active ?? false,
+      }));
+      this.nodes.set(normalizedNodes);
     }
 
     if (savedConns) {
@@ -111,7 +119,7 @@ export class GridService {
           description: `Description for ${x},${y}`,
           shape3D: 'isometric-cube.svg',
           color: '#3b82f6',
-          floorColor: '#FFFFFF',
+          floorColor: '#ffffff', // Lowercase for consistency
           active: false,
           maxConnections: 4,
         });
@@ -128,16 +136,22 @@ export class GridService {
    * Clear the grid, resetting all nodes to default state
    */
   clearGrid() {
+    // First clear storage to prevent stale data
+    this.storageService.clearStorage();
+
+    // Reset all nodes to default state
     this.nodes.update((nodes) =>
       nodes.map((n) => ({
         ...n,
         active: false,
         color: '#3b82f6',
-        floorColor: '#FFFFFF',
+        floorColor: '#ffffff', // Lowercase for consistency
         shape3D: 'isometric-cube.svg',
       })),
     );
     this.connections.set([]);
+
+    // Save the clean state
     this.storageService.saveState(this.nodes(), this.connections());
   }
 
@@ -162,14 +176,7 @@ export class GridService {
     const updates: Partial<FossFlowNode> = {};
     let changed = false;
 
-    // Check if adding an object would exceed limit
-    const isAddingObject = settings.objectEnabled && !node.active;
-    const isPaintingFloor =
-      settings.floorEnabled &&
-      (node.floorColor || '#ffffff').toLowerCase() === '#ffffff' &&
-      (settings.floorColor || '#ffffff').toLowerCase() !== '#ffffff';
-
-    // If it's a completely new modification (neither object nor floor previously modified)
+    // Check if this would exceed the modification limit
     const isNodeCurrentlyModified =
       node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
     const willBeModified =
