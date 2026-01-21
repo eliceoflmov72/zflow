@@ -9,5 +9,11 @@
   <span class="ff-quality" [attr.data-level]="currentQualityLevel()">
     {{ currentQualityLevel() | uppercase }}
   </span>
-  <span class="ff-nodes-count"> {{ visibleNodesCount() }} nodes </span>
+  <span class="ff-nodes-count"> 
+    <i class="pi pi-box"></i> {{ visibleNodesCount() }} visibles
+  </span>
+  <div class="ff-divider-v" style="height: 1rem; width: 1px; background: rgba(0,0,0,0.1); margin: 0 0.5rem;"></div>
+  <span class="ff-nodes-count" [style.color]="modifiedNodesCount() >= 55 ? '#ef4444' : ''">
+    {{ modifiedNodesCount() }} / 60 Objetos
+  </span>
 </div>

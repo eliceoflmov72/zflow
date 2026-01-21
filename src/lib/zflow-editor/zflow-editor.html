@@ -205,11 +205,13 @@
     <bottom-toolbar
       [currentRotationLabel]="currentRotationLabel"
       [zoomLabel]="zoomLabel"
+      [showStats]="showPerformanceStats"
       (rotateLeft)="rotateLeft()"
       (rotateRight)="rotateRight()"
       (zoomOut)="zoomOut()"
       (zoomIn)="zoomIn()"
       (resetView)="resetView()"
+      (toggleStats)="showPerformanceStats.set(!showPerformanceStats())"
     />
 
     <!-- PERFORMANCE INDICATOR (Dev Mode) -->
@@ -218,6 +220,7 @@
         [currentFps]="currentFps"
         [currentQualityLevel]="currentQualityLevel"
         [visibleNodesCount]="visibleNodesCount"
+        [modifiedNodesCount]="gridService.modifiedNodesCount"
       />
     }
 

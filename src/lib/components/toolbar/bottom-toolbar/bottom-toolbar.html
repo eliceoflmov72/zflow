@@ -5,7 +5,7 @@
       style="width: 18px; height: 18px; mask-image: url(/icons/rotate-left.svg)"
     ></div>
   </button>
-  <span class="ff-zoom-label" style="min-width: 45px;">{{ currentRotationLabel() }}</span>
+  <span class="ff-zoom-label" style="min-width: 45px">{{ currentRotationLabel() }}</span>
   <button (click)="rotateRight.emit()" title="Rotar Derecha (+45°)">
     <div
       class="ff-icon"
@@ -17,5 +17,12 @@
   <span class="ff-zoom-label">{{ zoomLabel() }}%</span>
   <button (click)="zoomIn.emit()" title="Acercar"><i class="pi pi-plus"></i></button>
   <div class="ff-divider-v"></div>
+  <button
+    (click)="toggleStats.emit()"
+    [class.active]="showStats()"
+    title="Mostrar Estadísticas de Rendimiento"
+  >
+    <i class="pi pi-chart-line"></i>
+  </button>
   <button (click)="resetView.emit()" title="Ajustar Vista"><i class="pi pi-refresh"></i></button>
 </toolbar>

@@ -19,10 +19,12 @@ import { Toolbar } from '../toolbar';
 export class BottomToolbar {
   @Input({ required: true }) currentRotationLabel!: Signal<string>;
   @Input({ required: true }) zoomLabel!: Signal<number>;
+  @Input({ required: true }) showStats!: Signal<boolean>;
 
   @Output() rotateLeft = new EventEmitter<void>();
   @Output() rotateRight = new EventEmitter<void>();
   @Output() zoomOut = new EventEmitter<void>();
   @Output() zoomIn = new EventEmitter<void>();
   @Output() resetView = new EventEmitter<void>();
+  @Output() toggleStats = new EventEmitter<void>();
 }

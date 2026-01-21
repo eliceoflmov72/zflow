@@ -145,7 +145,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ==================== PERFORMANCE MONITORING ====================
-  showPerformanceStats = signal(true); // Toggle for dev mode stats
+  showPerformanceStats = signal(false); // Toggle for dev mode stats
 
   currentFps = computed(() => {
     this.frameCounter(); // Reactive dependency to update each frame

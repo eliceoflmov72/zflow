@@ -27,6 +27,11 @@ export class GridService {
     return this.nodes().filter((n) => n.active);
   });
 
+  // Count nodes that count towards the "edit limit" (active objects or painted floors)
+  modifiedNodesCount = computed(() => {
+    return this.nodes().filter((n) => n.active || (n.floorColor && n.floorColor.toLowerCase() !== '#ffffff')).length;
+  });
+
   // Spatial Partitioning: Quadtree for optimized visibility queries
   private quadtree = new Quadtree<NodeItem>({ x: -5000, y: -5000, width: 10000, height: 10000 });
 
@@ -155,6 +160,21 @@ export class GridService {
     const updates: Partial<FossFlowNode> = {};
     let changed = false;
 
+    // Check if adding an object would exceed limit
+    const isAddingObject = settings.objectEnabled && !node.active;
+    const isPaintingFloor = settings.floorEnabled && (node.floorColor || '#ffffff').toLowerCase() === '#ffffff' && (settings.floorColor || '#ffffff').toLowerCase() !== '#ffffff';
+    
+    // If it's a completely new modification (neither object nor floor previously modified)
+    const isNodeCurrentlyModified = node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
+    const willBeModified = settings.objectEnabled || (settings.floorEnabled && (settings.floorColor || '#ffffff').toLowerCase() !== '#ffffff');
+
+    if (!isNodeCurrentlyModified && willBeModified) {
+      if (this.modifiedNodesCount() >= 60) {
+        console.warn('Cannot edit node: Limit of 60 modified nodes reached');
+        return false;
+      }
+    }
+
     if (settings.objectEnabled) {
       if (!node.active || node.shape3D !== settings.shape || node.color !== settings.objectColor) {
         updates.active = true;
@@ -181,12 +201,27 @@ export class GridService {
    * Update a single node
    */
   updateNode(id: string, updates: Partial<FossFlowNode>) {
+    const node = this.nodes().find((n) => n.id === id);
+    if (!node) return;
+
+    // Limit check for manual updates (from sidebars)
+    const isCurrentlyModified = node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
+    const willBeActive = updates.active !== undefined ? updates.active : node.active;
+    const willHavePaintedFloor = updates.floorColor !== undefined 
+      ? (updates.floorColor.toLowerCase() !== '#ffffff') 
+      : (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
+    
+    const willBeModified = willBeActive || willHavePaintedFloor;
+
+    if (!isCurrentlyModified && willBeModified && this.modifiedNodesCount() >= 60) {
+      console.warn('Cannot update node: Limit of 60 modified nodes reached');
+      return;
+    }
+
     // If we are activating a node, ensure it doesn't collide with a connection
     if (updates.active === true) {
-      const node = this.nodes().find((n) => n.id === id);
       // Only block if it's currently INACTIVE and the tile is occupied
       if (
-        node &&
         !node.active &&
         this.connectionService.isTileOccupiedByConnection(
           node.position.x,

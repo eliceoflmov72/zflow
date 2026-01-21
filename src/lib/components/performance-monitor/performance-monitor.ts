@@ -13,4 +13,5 @@ export class PerformanceMonitorComponent {
   @Input({ required: true }) currentFps!: Signal<number>;
   @Input({ required: true }) currentQualityLevel!: Signal<string>;
   @Input({ required: true }) visibleNodesCount!: Signal<number>;
+  @Input({ required: true }) modifiedNodesCount!: Signal<number>;
 }
