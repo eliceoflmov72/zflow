@@ -1227,6 +1227,10 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectObject(svgName: string, node: any) {
+    if (!svgName) {
+      this.removeObject(node);
+      return;
+    }
     this.updateNode(node.id, { shape3D: svgName, active: true });
   }
 

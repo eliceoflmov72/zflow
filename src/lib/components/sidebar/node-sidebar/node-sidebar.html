@@ -13,8 +13,8 @@
 
   <div class="ff-section-label">Seleccionar Objeto</div>
   <visual-objects-tab
-    [currentShape]="node.shape3D"
-    (selectShape)="selectObject.emit({ svg: $event || '', node })"
+    [currentShape]="node.active ? node.shape3D : null"
+    (selectShape)="$event ? selectObject.emit({ svg: $event, node }) : removeObject.emit(node)"
   ></visual-objects-tab>
 
   <div class="ff-section-label">Color del Objeto</div>
