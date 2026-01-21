@@ -225,25 +225,14 @@
     }
 
     <!-- SIDEBAR -->
-    @if (selectionService.selectedNodeIds().length > 1) {
-      <!-- MULTI SELECTION SIDEBAR -->
+    <!-- SIDEBAR -->
+    @if (selectedNodesList().length > 0) {
+      <!-- UNIFIED SELECTION SIDEBAR -->
       <selection-sidebar
+        [selectedNodes]="selectedNodesList()"
         [availableSvgs]="availableSvgs"
         [recentColors]="recentColors"
         (updateSelectedNodes)="updateSelectedNodes($event)"
-        (deleteSelected)="deleteSelected()"
-      />
-    } @else if (selectedNode(); as node) {
-      <node-sidebar
-        [node]="node"
-        [availableSvgs]="availableSvgs"
-        [recentColors]="recentColors"
-        (removeObject)="removeObject($event)"
-        (selectObject)="selectObject($event.svg, $event.node)"
-        (onObjectColorInput)="onObjectColorInput($event.event, $event.node)"
-        (onFloorColorInput)="onFloorColorInput($event.event, $event.node)"
-        (applyRecentColorToObject)="applyRecentColorToObject($event.color, $event.node)"
-        (applyRecentColorToFloor)="applyRecentColorToFloor($event.color, $event.node)"
         (deleteSelected)="deleteSelected()"
       />
     } @else if (

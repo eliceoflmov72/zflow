@@ -23,9 +23,25 @@ import { VisualObjectsTab } from '../../visual-objects-tab/visual-objects-tab';
 export class SelectionSidebar {
   selectionService = inject(SelectionService);
 
+  @Input({ required: true }) selectedNodes: FossFlowNode[] = [];
   @Input({ required: true }) availableSvgs!: Signal<string[]>;
   @Input({ required: true }) recentColors!: Signal<string[]>;
 
   @Output() updateSelectedNodes = new EventEmitter<Partial<FossFlowNode>>();
   @Output() deleteSelected = new EventEmitter<void>();
+
+  get isSingleSelection(): boolean {
+    return this.selectedNodes.length === 1;
+  }
+
+  get singleNode(): FossFlowNode | null {
+    return this.isSingleSelection ? this.selectedNodes[0] : null;
+  }
+
+  get sidebarTitle(): string {
+    if (this.isSingleSelection) {
+      return 'Ajustes del Objeto'; // Single node title
+    }
+    return `Selección Múltiple (${this.selectedNodes.length})`;
+  }
 }

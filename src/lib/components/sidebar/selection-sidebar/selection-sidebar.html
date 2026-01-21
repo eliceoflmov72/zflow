@@ -1,20 +1,40 @@
 <sidebar 
-  [title]="'Selección Múltiple (' + selectionService.selectedNodeIds().length + ')'" 
+  [title]="sidebarTitle" 
   position="right" 
   (close)="selectionService.setSelection([])"
 >
-  <div class="ff-section-label">Editar Objetos</div>
+  @if (isSingleSelection && singleNode) {
+    <div class="ff-section-label">Posición</div>
+    <div class="ff-row">
+      <div class="ff-field">
+        <label>X</label>
+        <input [value]="singleNode.position.x" readonly />
+      </div>
+      <div class="ff-field">
+        <label>Y</label>
+        <input [value]="singleNode.position.y" readonly />
+      </div>
+    </div>
+  }
+
+  <div class="ff-section-label">
+    {{ isSingleSelection ? 'Seleccionar Objeto' : 'Editar Objetos' }}
+  </div>
   <div class="ff-object-gallery" style="display: none;"></div>
+  
   <visual-objects-tab
-    [currentShape]="null"
+    [currentShape]="isSingleSelection && singleNode?.active ? singleNode?.shape3D : null"
     (selectShape)="$event ? updateSelectedNodes.emit({ shape3D: $event, active: true }) : updateSelectedNodes.emit({ active: false, floorColor: '#ffffff', color: '#3b82f6', shape3D: 'isometric-cube.svg' })"
   ></visual-objects-tab>
 
-  <div class="ff-section-label">Color de Objetos</div>
+  <div class="ff-section-label">
+    {{ isSingleSelection ? 'Color del Objeto' : 'Color de Objetos' }}
+  </div>
   <div class="ff-row" style="margin-bottom: 0.5rem;">
     <div class="ff-field">
       <input
         type="color"
+        [value]="(isSingleSelection && singleNode?.color) ? singleNode?.color : '#3b82f6'"
         (input)="updateSelectedNodes.emit({ color: $any($event.target).value })"
         style="width: 100%;"
       />
@@ -28,16 +48,20 @@
           class="ff-color-swatch"
           [style.background-color]="color"
           (click)="updateSelectedNodes.emit({ color: color })"
+          [title]="color"
         ></div>
       }
     </div>
   }
 
-  <div class="ff-section-label">Color de Suelo</div>
+  <div class="ff-section-label">
+    {{ isSingleSelection ? 'Color del Suelo' : 'Color de Suelo' }}
+  </div>
   <div class="ff-row" style="margin-bottom: 0.5rem;">
     <div class="ff-field">
       <input
         type="color"
+        [value]="(isSingleSelection && singleNode?.floorColor) ? singleNode?.floorColor : '#ffffff'"
         (input)="updateSelectedNodes.emit({ floorColor: $any($event.target).value })"
         style="width: 100%;"
       />
@@ -50,12 +74,14 @@
           class="ff-color-swatch"
           [style.background-color]="color"
           (click)="updateSelectedNodes.emit({ floorColor: color })"
+          [title]="color"
         ></div>
       }
     </div>
   }
 
   <button class="ff-btn-delete" (click)="deleteSelected.emit()">
-    <i class="pi pi-trash"></i> Eliminar Seleccionados
+    <i class="pi pi-trash"></i> 
+    {{ isSingleSelection ? 'Eliminar Objeto' : 'Eliminar Seleccionados' }}
   </button>
 </sidebar>

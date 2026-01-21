@@ -30,7 +30,6 @@ import { ModalComponent } from '../components/ui/modal/modal';
 import { BottomToolbar } from '../components/toolbar/bottom-toolbar/bottom-toolbar';
 import { TopToolbar } from '../components/toolbar/top-toolbar/top-toolbar';
 import { SelectionSidebar } from '../components/sidebar/selection-sidebar/selection-sidebar';
-import { NodeSidebar } from '../components/sidebar/node-sidebar/node-sidebar';
 import { PaintSidebar } from '../components/sidebar/paint-sidebar/paint-sidebar';
 import { ConnectionSidebar } from '../components/sidebar/connection-sidebar/connection-sidebar';
 import { PerformanceMonitorComponent } from '../components/performance-monitor/performance-monitor';
@@ -45,7 +44,6 @@ import { PerformanceMonitorComponent } from '../components/performance-monitor/p
     BottomToolbar,
     TopToolbar,
     SelectionSidebar,
-    NodeSidebar,
     PaintSidebar,
     ConnectionSidebar,
     PerformanceMonitorComponent,
@@ -138,6 +136,18 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   isFullscreen = signal(false);
   showClearConfirm = signal(false);
   frameCounter = signal(0);
+
+  selectedNode = computed(() => {
+    const id = this.selectionService.selectedNodeId();
+    return id ? this.gridService.nodes().find((n) => n.id === id) || null : null;
+  });
+
+  selectedNodesList = computed(() => {
+    const ids = this.selectionService.selectedNodeIds();
+    const nodes = this.gridService.nodes();
+    if (ids.length === 0) return [];
+    return nodes.filter((n) => ids.includes(n.id));
+  });
 
   private getFovFactor() {
     const fovRad = (this.engine.camera.zoom * Math.PI) / 180;
@@ -462,7 +472,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
   @Output() nodesChange = new EventEmitter<FossFlowNode[]>();
 
-  selectedNode = signal<any>(null);
+  // selectedNode is now a computed signal declared above
   selectedConnection = signal<FossFlowConnection | null>(null);
 
   constructor() {
@@ -471,16 +481,6 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
       this.engine = new WebGPUEngine();
       console.log('[ZFlowEditor] WebGPUEngine instance created');
     }
-
-    effect(() => {
-      const selectedId = this.selectionService.selectedNodeId();
-      if (selectedId) {
-        const node = this.gridService.nodes().find((n) => n.id === selectedId);
-        this.selectedNode.set(node ? { ...node } : null);
-      } else {
-        this.selectedNode.set(null);
-      }
-    });
 
     effect(() => {
       const selectedId = this.selectionService.selectedConnectionId();
@@ -1111,47 +1111,11 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     this.zoomLabel.set(p);
   }
 
-  selectObject(svgName: string, node: any) {
-    this.updateNodeOrSelection(node.id, { shape3D: svgName, active: !!svgName });
-  }
-
-  removeObject(node: any) {
-    // Reset the node to default state (no object, default floor color)
-    this.updateNodeOrSelection(node.id, {
-      active: false,
-      floorColor: '#ffffff',
-      color: '#3b82f6',
-      shape3D: 'isometric-cube.svg',
-    });
-  }
-
-  onFloorColorInput(event: Event, node: any) {
-    const input = event.target as HTMLInputElement;
-    this.updateNodeOrSelection(node.id, { floorColor: input.value });
-  }
-
-  onObjectColorInput(event: Event, node: any) {
-    const input = event.target as HTMLInputElement;
-    this.updateNodeOrSelection(node.id, { color: input.value });
-  }
-
-  applyRecentColorToFloor(color: string, node: any) {
-    this.updateNodeOrSelection(node.id, { floorColor: color });
-  }
-
-  applyRecentColorToObject(color: string, node: any) {
-    this.updateNodeOrSelection(node.id, { color: color });
-  }
+  // Methods for node sidebar have been removed as they are handled by selection sidebar now
 
   updateNode(id: string, updates: Partial<FossFlowNode>) {
     this.pushState();
     this.gridService.updateNode(id, updates);
-    // The effect in the constructor will automatically update this.selectedNode()
-    // when gridService.nodes() changes, but we can do a local set for immediate feedback
-    const current = this.selectedNode();
-    if (current?.id === id) {
-      this.selectedNode.set({ ...current, ...updates });
-    }
   }
 
   resetView() {
@@ -1306,12 +1270,6 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     this.pushState();
     const updates = selectedIds.map((id) => ({ id, changes }));
     this.gridService.updateManyNodes(updates);
-
-    // Update the singular selectedNode signal for immediate UI feedback in the sidebar
-    const current = this.selectedNode();
-    if (current && selectedIds.includes(current.id)) {
-      this.selectedNode.set({ ...current, ...changes });
-    }
   }
 
   private updateNodeOrSelection(id: string, updates: Partial<FossFlowNode>) {
