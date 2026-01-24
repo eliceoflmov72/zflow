@@ -10,6 +10,7 @@ import {
   SpatialHash,
   LRUCache,
 } from '../utils/optimizer';
+import { Logger } from '../utils/logger';
 
 /**
  * WebGPU Engine - Floor Only
@@ -80,18 +81,18 @@ export class WebGPUEngine {
   private cachedInstanceData: Float32Array | null = null;
 
   async init(canvas: HTMLCanvasElement): Promise<boolean> {
-    console.log('[WebGPUEngine] init starting...');
+    Logger.log('init starting...');
     if (!navigator.gpu) {
-      console.error('[WebGPUEngine] navigator.gpu is undefined');
+      Logger.error('navigator.gpu is undefined');
       return false;
     }
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) {
-      console.error('[WebGPUEngine] Failed to request adapter');
+      Logger.error('Failed to request adapter');
       return false;
     }
     this.device = await adapter.requestDevice();
-    console.log('[WebGPUEngine] Device requested');
+    Logger.log('Device requested');
     this.context = canvas.getContext('webgpu') as GPUCanvasContext;
     this.format = navigator.gpu.getPreferredCanvasFormat();
 
@@ -100,7 +101,7 @@ export class WebGPUEngine {
       format: this.format,
       alphaMode: 'premultiplied',
     });
-    console.log('[WebGPUEngine] Context configured');
+    Logger.log('Context configured');
 
     await this.setupPipeline();
     await this.setupGridPipeline();
@@ -108,7 +109,7 @@ export class WebGPUEngine {
     this.createBuffers();
 
     this.initialized = true;
-    console.log('[WebGPUEngine] Initialization complete');
+    Logger.log('Initialization complete');
     return true;
   }
 

@@ -1,6 +1,7 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Node, Conection } from '../models/fossflow.types';
+import { Logger } from '../utils/logger';
 
 @Injectable()
 export class StorageService {
@@ -17,7 +18,7 @@ export class StorageService {
     try {
       return JSON.parse(savedNodes);
     } catch (e) {
-      console.error('Failed to parse saved nodes', e);
+      Logger.error('Failed to parse saved nodes', e);
       return null;
     }
   }
@@ -30,7 +31,7 @@ export class StorageService {
     try {
       return JSON.parse(savedConns);
     } catch (e) {
-      console.error('Failed to parse saved connections', e);
+      Logger.error('Failed to parse saved connections', e);
       return null;
     }
   }
@@ -91,7 +92,7 @@ export class StorageService {
 
       return parsed;
     } catch (e) {
-      console.error('Failed to parse saved connection config', e);
+      Logger.error('Failed to parse saved connection config', e);
       return null;
     }
   }

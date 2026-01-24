@@ -1,3 +1,6 @@
+import { isDevMode } from '@angular/core';
+import { Logger } from './logger';
+
 /**
  * Performance Optimizer - Advanced Techniques for Low-End Hardware
  *
@@ -392,7 +395,7 @@ export class ComputationScheduler {
       try {
         fn();
       } catch (e) {
-        console.error(`Scheduled computation ${id} failed:`, e);
+        Logger.error(`Scheduled computation ${id} failed:`, e);
       }
       this.pendingComputations.delete(id);
     }

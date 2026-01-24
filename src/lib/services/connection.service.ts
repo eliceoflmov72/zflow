@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, isDevMode } from '@angular/core';
 import { Node, Conection } from '../models/fossflow.types';
+import { Logger } from '../utils/logger';
 
 @Injectable()
 export class ConnectionService {
@@ -12,9 +13,9 @@ export class ConnectionService {
   }
 
   private debugLog(message: string, data?: unknown) {
-    if (!this.debugEnabled) return;
-    if (data !== undefined) console.debug(`[zflow][connection] ${message}`, data);
-    else console.debug(`[zflow][connection] ${message}`);
+    if (isDevMode()) {
+      Logger.debug(`[connection] ${message}`, data);
+    }
   }
 
   /**

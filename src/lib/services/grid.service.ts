@@ -1,6 +1,7 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Node, Conection } from '../models/fossflow.types';
+import { Logger } from '../utils/logger';
 import { Quadtree, QuadtreeItem, Rectangle } from '../utils/quadtree';
 import { StorageService } from './storage.service';
 import { ConnectionService } from './connection.service';
@@ -130,6 +131,14 @@ export class GridService {
    * Initialize the grid with default nodes
    */
   initializeGrid(width: number, height: number, force = false) {
+    // Safety check for malicious or accidental large grid sizes (OOM Protection)
+    const MAX_DIM = 250;
+    if (width > MAX_DIM || height > MAX_DIM) {
+      Logger.warn(`Grid size ${width}x${height} exceeds safety limit of ${MAX_DIM}. Clamping.`);
+      width = Math.min(width, MAX_DIM);
+      height = Math.min(height, MAX_DIM);
+    }
+
     if (!force && this.nodes().length > 0) return;
 
     const initialNodes: Node[] = [];

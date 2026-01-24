@@ -33,6 +33,7 @@ import { SelectionSidebar } from '../components/sidebar/selection-sidebar/select
 import { PaintSidebar } from '../components/sidebar/paint-sidebar/paint-sidebar';
 import { ConnectionSidebar } from '../components/sidebar/connection-sidebar/connection-sidebar';
 import { PerformanceMonitorComponent } from '../components/performance-monitor/performance-monitor';
+import { Logger } from '../utils/logger';
 
 @Component({
   selector: 'zflow-editor',
@@ -456,10 +457,10 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   selectedConnection = signal<Conection | null>(null);
 
   constructor() {
-    console.log('[ZFlowEditor] Constructor start. Platform:', this.platformId);
+    Logger.log('Constructor start. Platform:', this.platformId);
     if (isPlatformBrowser(this.platformId)) {
       this.engine = new WebGPUEngine();
-      console.log('[ZFlowEditor] WebGPUEngine instance created');
+      Logger.log('WebGPUEngine instance created');
     }
 
     effect(() => {
@@ -501,30 +502,30 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async ngAfterViewInit() {
-    console.log('[ZFlowEditor] ngAfterViewInit - Starting initialization');
+    Logger.log('ngAfterViewInit - Starting initialization');
 
     if (!isPlatformBrowser(this.platformId)) {
-      console.warn('[ZFlowEditor] Skipping initialization: Not in browser platform');
+      Logger.warn('Skipping initialization: Not in browser platform');
       return;
     }
 
     if (!this.canvasRef) {
-      console.error('[ZFlowEditor] Error: canvasRef is null in ngAfterViewInit');
+      Logger.error('Error: canvasRef is null in ngAfterViewInit');
       return;
     }
 
     const canvas = this.canvasRef.nativeElement;
     if (!canvas) {
-      console.error('[ZFlowEditor] Error: nativeElement is null in canvasRef');
+      Logger.error('Error: nativeElement is null in canvasRef');
       return;
     }
 
-    console.log('[ZFlowEditor] Starting WebGPUEngine.init(canvas)');
+    Logger.log('Starting WebGPUEngine.init(canvas)');
     const success = await this.engine.init(canvas);
-    console.log('[ZFlowEditor] WebGPU initialization success:', success);
+    Logger.log('WebGPU initialization success:', success);
 
     if (this.engine.initialized) {
-      console.log('[ZFlowEditor] Engine is fully initialized');
+      Logger.log('Engine is fully initialized');
     }
 
     this.webGpuSupported.set(success);
@@ -540,7 +541,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
           this.handleResize();
         });
         this.resizeObserver.observe(parent);
-        console.log('[ZFlowEditor] ResizeObserver attached to parent');
+        Logger.log('ResizeObserver attached to parent');
       }
 
       this.startRenderLoop();
