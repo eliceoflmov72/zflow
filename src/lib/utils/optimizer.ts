@@ -229,7 +229,7 @@ export const QUALITY_PRESETS: Record<string, QualitySettings> = {
     enableShadows: false,
     enableAntialiasing: true,
     enableAnimations: true,
-    msaaSamples: 4, // Changed from 2 to 4 (as 2 is often unsupported)
+    msaaSamples: 4, // Using 4 samples as 2 is often unsupported on some hardware
     textureQuality: 'medium',
     useSimplifiedDOM: false,
     enableCSSTransitions: true,

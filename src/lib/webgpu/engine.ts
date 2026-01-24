@@ -21,13 +21,13 @@ export class WebGPUEngine {
   private format!: GPUTextureFormat;
 
   private pipeline!: GPURenderPipeline;
-  private gridPipeline!: GPURenderPipeline; // New pipeline for infinite grid
+  private gridPipeline!: GPURenderPipeline; // Pipeline for infinite grid
   private floorVertexBuffer!: GPUBuffer;
   private gridVertexBuffer!: GPUBuffer; // Buffer for the huge quad
   private floorInstanceBuffer!: GPUBuffer;
   private uniformBuffer!: GPUBuffer;
   private uniformBindGroup!: GPUBindGroup;
-  private gridBindGroup!: GPUBindGroup; // Bind group for grid pipeline
+  private gridBindGroup!: GPUBindGroup; // Bind group for infinite grid pipeline
 
   private floorInstanceData!: Float32Array;
 
@@ -237,7 +237,7 @@ export class WebGPUEngine {
       },
       multisample: {
         count: this.sampleCount,
-        alphaToCoverageEnabled: this.sampleCount > 1, // Fix: Must be false if sampleCount is 1
+        alphaToCoverageEnabled: this.sampleCount > 1, // MSAA must be disabled if sampleCount is 1
       },
     });
   }
@@ -744,7 +744,7 @@ export class WebGPUEngine {
     const ndcX = clipX / clipW;
     const ndcY = clipY / clipW;
 
-    // Frustum Culling (Optimization: Task 7 & 2)
+    // Frustum Culling
     // Check if the point is significantly outside the viewport
     // Using a margin of 1.2 to avoid objects popping in/out at edges
     if (ndcX < -1.2 || ndcX > 1.2 || ndcY < -1.2 || ndcY > 1.2) return null;

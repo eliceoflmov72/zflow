@@ -558,7 +558,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     const speed = 1.0;
     switch (event.key) {
       case 'Escape':
-        // Fix: Clear all connection-related state on Escape
+        // Clear all connection-related state on Escape
         this.activePath.set([]);
         this.connectSourceId.set(null);
         this.previewPoint.set(null);
