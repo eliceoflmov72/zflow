@@ -2,7 +2,7 @@
 
 import { Mat4 } from './math-utils';
 import { Camera } from './camera';
-import { FossFlowNode } from '../models/fossflow.types';
+import { Node } from '../models/fossflow.types';
 import {
   AdaptiveFrameController,
   QualitySettings,
@@ -54,7 +54,7 @@ export class WebGPUEngine {
     x: number;
     y: number;
     id: string;
-    node: FossFlowNode;
+    node: Node;
   }>(5);
 
   // LRU Cache for projection calculations
@@ -447,11 +447,7 @@ export class WebGPUEngine {
     }
   }
 
-  private generateNodesDataHash(
-    nodes: FossFlowNode[],
-    selectedId: string | null,
-    bounds: any,
-  ): string {
+  private generateNodesDataHash(nodes: Node[], selectedId: string | null, bounds: any): string {
     const boundsPart = bounds
       ? `${Math.floor(bounds.x)},${Math.floor(bounds.y)},${nodes.length}`
       : 'all';
@@ -475,7 +471,7 @@ export class WebGPUEngine {
     return `v11_${selectedId || ''}_${boundsPart}_${propSum}`;
   }
 
-  private generateFloorInstances(nodes: FossFlowNode[], selectedId: string | null): Float32Array {
+  private generateFloorInstances(nodes: Node[], selectedId: string | null): Float32Array {
     const count = nodes.length;
 
     // Reuse or create the persistent Float32Array
@@ -510,7 +506,7 @@ export class WebGPUEngine {
     return this.cachedInstanceData.subarray(0, offset);
   }
 
-  render(nodes: FossFlowNode[], selectedId: string | null): boolean {
+  render(nodes: Node[], selectedId: string | null): boolean {
     if (!this.device || !this.pipeline || !this.gridPipeline || !this.initialized) return false;
 
     // ==================== PERFORMANCE MONITORING ====================

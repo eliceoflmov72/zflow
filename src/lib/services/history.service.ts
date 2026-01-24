@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
-import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/fossflow.types';
 
-export interface FossFlowState {
-  nodes: FossFlowNode[];
-  connections: FossFlowConnection[];
+export interface State {
+  nodes: Node[];
+  connections: Conection[];
 }
 
 @Injectable()
@@ -11,7 +11,7 @@ export class HistoryService {
   private history: string[] = [];
   private future: string[] = [];
 
-  pushState(state: FossFlowState) {
+  pushState(state: State) {
     const stateString = JSON.stringify(state);
     // Only push if different from last
     if (this.history.length > 0 && this.history[this.history.length - 1] === stateString) return;
@@ -22,7 +22,7 @@ export class HistoryService {
     this.future = []; // Clear future on new action
   }
 
-  undo(currentState: FossFlowState): FossFlowState | null {
+  undo(currentState: State): State | null {
     if (this.history.length === 0) return null;
 
     const currentStateString = JSON.stringify(currentState);
@@ -32,7 +32,7 @@ export class HistoryService {
     return prevState;
   }
 
-  redo(currentState: FossFlowState): FossFlowState | null {
+  redo(currentState: State): State | null {
     if (this.future.length === 0) return null;
 
     const currentStateString = JSON.stringify(currentState);

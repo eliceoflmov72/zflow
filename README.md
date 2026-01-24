@@ -81,6 +81,7 @@ Or configure your `angular.json` to include the assets:
 ```
 
 **Required asset paths:**
+
 - `/forms/` - SVG form shapes (isometric-cube.svg, isometric-sphere.svg, etc.)
 - `/images/` - PNG images (car.png, code.png, database.png, etc.)
 - `/icons/` - SVG icons (cursor-select.svg, hand-pan.svg, etc.)
@@ -94,7 +95,7 @@ ZFlow requires WebGPU support. Ensure your application runs in a browser that su
 ```typescript
 import { Component } from '@angular/core';
 import { ZFlowEditor } from 'zflow';
-import { FossFlowNode, FossFlowConnection } from 'zflow';
+import { Node, Conection } from 'zflow';
 
 @Component({
   selector: 'app-diagram-editor',
@@ -110,7 +111,7 @@ import { FossFlowNode, FossFlowConnection } from 'zflow';
   `,
 })
 export class DiagramEditorComponent {
-  initialNodes: FossFlowNode[] = [
+  initialNodes: Node[] = [
     {
       id: '1',
       x: 0,
@@ -121,13 +122,13 @@ export class DiagramEditorComponent {
     },
   ];
 
-  initialConnections: FossFlowConnection[] = [];
+  initialConnections: Conection[] = [];
 
-  onNodesChange(nodes: FossFlowNode[]): void {
+  onNodesChange(nodes: Node[]): void {
     console.log('Nodes updated:', nodes);
   }
 
-  onConnectionsChange(connections: FossFlowConnection[]): void {
+  onConnectionsChange(connections: Conection[]): void {
     console.log('Connections updated:', connections);
   }
 }
@@ -138,17 +139,19 @@ export class DiagramEditorComponent {
 ### ZFlowEditor Component
 
 **Inputs:**
-- `nodes: FossFlowNode[]` - Initial nodes to display
-- `connections: FossFlowConnection[]` - Initial connections between nodes
+
+- `nodes: Node[]` - Initial nodes to display
+- `connections: Conection[]` - Initial connections between nodes
 
 **Outputs:**
-- `nodesChange: EventEmitter<FossFlowNode[]>` - Emitted when nodes are modified
-- `connectionsChange: EventEmitter<FossFlowConnection[]>` - Emitted when connections are modified
+
+- `nodesChange: EventEmitter<Node[]>` - Emitted when nodes are modified
+- `connectionsChange: EventEmitter<Conection[]>` - Emitted when connections are modified
 
 ### Types
 
 ```typescript
-interface FossFlowNode {
+interface Node {
   id: string;
   x: number;
   y: number;
@@ -158,7 +161,7 @@ interface FossFlowNode {
   lod?: 'low' | 'high';
 }
 
-interface FossFlowConnection {
+interface Conection {
   id: string;
   sourceId: string;
   targetId: string;

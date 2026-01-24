@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SelectionService } from '../../../services/selection.service';
-import { FossFlowNode } from '../../../models/fossflow.types';
+import { Node } from '../../../models/fossflow.types';
 import { Sidebar } from '../sidebar';
 import { VisualObjectsTab } from '../../visual-objects-tab/visual-objects-tab';
 
@@ -23,18 +23,18 @@ import { VisualObjectsTab } from '../../visual-objects-tab/visual-objects-tab';
 export class SelectionSidebar {
   selectionService = inject(SelectionService);
 
-  @Input({ required: true }) selectedNodes: FossFlowNode[] = [];
+  @Input({ required: true }) selectedNodes: Node[] = [];
   @Input({ required: true }) availableSvgs!: Signal<string[]>;
   @Input({ required: true }) recentColors!: Signal<string[]>;
 
-  @Output() updateSelectedNodes = new EventEmitter<Partial<FossFlowNode>>();
+  @Output() updateSelectedNodes = new EventEmitter<Partial<Node>>();
   @Output() deleteSelected = new EventEmitter<void>();
 
   get isSingleSelection(): boolean {
     return this.selectedNodes.length === 1;
   }
 
-  get singleNode(): FossFlowNode | null {
+  get singleNode(): Node | null {
     return this.isSingleSelection ? this.selectedNodes[0] : null;
   }
 

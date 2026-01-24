@@ -25,7 +25,7 @@ import { HistoryService } from '../services/history.service';
 import { StorageService } from '../services/storage.service';
 import { ConnectionService } from '../services/connection.service';
 import { WebGPUEngine } from '../webgpu/engine';
-import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/fossflow.types';
 import { ModalComponent } from '../components/ui/modal/modal.component';
 import { BottomToolbar } from '../components/toolbar/bottom-toolbar/bottom-toolbar';
 import { TopToolbar } from '../components/toolbar/top-toolbar/top-toolbar';
@@ -181,15 +181,13 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     const fovFactor = 1.0 / Math.tan(fovRad / 2);
 
     return conns
-      .map((conn: FossFlowConnection) =>
-        this.projectConnection(conn, nodeMap, dpr, fovFactor, bounds),
-      )
+      .map((conn: Conection) => this.projectConnection(conn, nodeMap, dpr, fovFactor, bounds))
       .filter((c: any): c is NonNullable<any> => c !== null);
   });
 
   private projectConnection(
-    conn: FossFlowConnection,
-    nodeMap: Map<string, FossFlowNode>,
+    conn: Conection,
+    nodeMap: Map<string, Node>,
     dpr: number,
     fovFactor: number,
     bounds: any,
@@ -328,7 +326,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
       .sort((a, b) => b.z - a.z); // Sort back to front
   });
 
-  private getPrioritizedActiveNodes(maxNodes: number): FossFlowNode[] {
+  private getPrioritizedActiveNodes(maxNodes: number): Node[] {
     let activeNodes = this.gridService.activeNodes();
 
     if (activeNodes.length > maxNodes) {
@@ -348,7 +346,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     return activeNodes;
   }
 
-  private projectNode(node: FossFlowNode, dpr: number, fovFactor: number, quality: any) {
+  private projectNode(node: Node, dpr: number, fovFactor: number, quality: any) {
     const screenPos = this.engine.worldToScreenCached(node.position.x, 0.0, node.position.y);
     if (!screenPos) return null;
 
@@ -429,7 +427,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   private mouseDownTime = 0;
   private isAdditiveSelection = false;
 
-  @Input() set nodes(value: FossFlowNode[]) {
+  @Input() set nodes(value: Node[]) {
     if (value) {
       if (value.length === 0) {
         this.initializeDefaultGrid();
@@ -452,10 +450,10 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  @Output() nodesChange = new EventEmitter<FossFlowNode[]>();
+  @Output() nodesChange = new EventEmitter<Node[]>();
 
   // selectedNode is now a computed signal declared above
-  selectedConnection = signal<FossFlowConnection | null>(null);
+  selectedConnection = signal<Conection | null>(null);
 
   constructor() {
     console.log('[ZFlowEditor] Constructor start. Platform:', this.platformId);
@@ -703,7 +701,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Paint helper
-  private performPaintAt(clientX: number, clientY: number): FossFlowNode | null {
+  private performPaintAt(clientX: number, clientY: number): Node | null {
     const hit = this.getHitFromMouse(clientX, clientY);
     if (!hit) return null;
 
@@ -757,7 +755,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private handleConnectClick(gx: number, gz: number, targetNode: FossFlowNode | null) {
+  private handleConnectClick(gx: number, gz: number, targetNode: Node | null) {
     if (this.activePath().length === 0) {
       // --- STARTING A CONNECTION ---
       if (Date.now() - this.lastFinishTime < 200) return;
@@ -1100,7 +1098,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
   // Methods for node sidebar have been removed as they are handled by selection sidebar now
 
-  updateNode(id: string, updates: Partial<FossFlowNode>) {
+  updateNode(id: string, updates: Partial<Node>) {
     this.pushState();
     this.gridService.updateNode(id, updates);
   }
@@ -1197,7 +1195,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     this.selectionService.selectConnection(id);
   }
 
-  updateConnection(id: string, updates: Partial<FossFlowConnection>) {
+  updateConnection(id: string, updates: Partial<Conection>) {
     this.pushState();
     this.gridService.updateConnection(id, updates);
     if (this.selectedConnection()?.id === id) {
@@ -1250,7 +1248,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  updateSelectedNodes(changes: Partial<FossFlowNode>) {
+  updateSelectedNodes(changes: Partial<Node>) {
     const selectedIds = this.selectionService.selectedNodeIds();
     if (selectedIds.length === 0) return;
 
@@ -1259,7 +1257,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     this.gridService.updateManyNodes(updates);
   }
 
-  private updateNodeOrSelection(id: string, updates: Partial<FossFlowNode>) {
+  private updateNodeOrSelection(id: string, updates: Partial<Node>) {
     const selectedIds = this.selectionService.selectedNodeIds();
     if (selectedIds.includes(id)) {
       this.updateSelectedNodes(updates);

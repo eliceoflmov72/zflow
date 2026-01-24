@@ -1,12 +1,12 @@
-export type FossFlowShape = string;
+export type Shape = string;
 
-export interface FossFlowPosition {
+export interface Position {
   x: number;
   y: number;
   z?: number;
 }
 
-export interface FossFlowConnection {
+export interface Conection {
   id: string;
   fromId: string;
   toId: string;
@@ -19,12 +19,12 @@ export interface FossFlowConnection {
   path?: { x: number; y: number }[];
 }
 
-export interface FossFlowNode {
+export interface Node {
   id: string;
-  position: FossFlowPosition;
+  position: Position;
   title: string;
   description: string;
-  shape3D: FossFlowShape;
+  shape3D: Shape;
   color: string;
   floorColor: string;
   active: boolean;
@@ -34,14 +34,14 @@ export interface FossFlowNode {
   connectionTags?: string[];
 }
 
-export interface FossFlowState {
-  nodes: FossFlowNode[];
-  connections: FossFlowConnection[];
+export interface State {
+  nodes: Node[];
+  connections: Conection[];
   gridSize: { width: number; height: number };
 }
 
-export type ZFlowShape = FossFlowShape;
-export type ZFlowPosition = FossFlowPosition;
-export type ZFlowConnection = FossFlowConnection;
-export type ZFlowNode = FossFlowNode;
-export type ZFlowState = FossFlowState;
+export type ZFlowShape = Shape;
+export type ZFlowPosition = Position;
+export type ZFlowConnection = Conection;
+export type ZFlowNode = Node;
+export type ZFlowState = State;

@@ -1,12 +1,12 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/fossflow.types';
 import { Quadtree, QuadtreeItem, Rectangle } from '../utils/quadtree';
 import { StorageService } from './storage.service';
 import { ConnectionService } from './connection.service';
 
 interface NodeItem extends QuadtreeItem {
-  node: FossFlowNode;
+  node: Node;
 }
 
 @Injectable()
@@ -15,13 +15,13 @@ export class GridService {
   private storageService = inject(StorageService);
   private connectionService = inject(ConnectionService);
 
-  nodes = signal<FossFlowNode[]>([]);
-  connections = signal<FossFlowConnection[]>([]);
+  nodes = signal<Node[]>([]);
+  connections = signal<Conection[]>([]);
   gridSize = signal({ width: 40, height: 40 });
   limitReached = signal(false);
 
   // Map for O(1) access by coordinate "x,y"
-  private nodeCoordMap = new Map<string, FossFlowNode>();
+  private nodeCoordMap = new Map<string, Node>();
 
   // Computed signal for only active nodes to optimize rendering
   activeNodes = computed(() => {
@@ -50,7 +50,7 @@ export class GridService {
       if (n.floorColor) colors.add(n.floorColor.toLowerCase());
     });
 
-    connections.forEach((c: FossFlowConnection) => {
+    connections.forEach((c: Conection) => {
       if (c.color) colors.add(c.color.toLowerCase());
     });
 
@@ -71,7 +71,7 @@ export class GridService {
       const nodes = this.nodes();
 
       // Update local cache map
-      const newMap = new Map<string, FossFlowNode>();
+      const newMap = new Map<string, Node>();
       this.quadtree.clear();
 
       for (const node of nodes) {
@@ -90,14 +90,14 @@ export class GridService {
   /**
    * Fast coordinate-based lookup
    */
-  getNodeAt(x: number, y: number): FossFlowNode | undefined {
+  getNodeAt(x: number, y: number): Node | undefined {
     return this.nodeCoordMap.get(`${x},${y}`);
   }
 
   /**
    * Get nodes within the specified bounds using spatial partitioning
    */
-  getNodesInBounds(bounds: Rectangle): FossFlowNode[] {
+  getNodesInBounds(bounds: Rectangle): Node[] {
     const items = this.quadtree.query(bounds);
     return items.map((i) => i.node);
   }
@@ -132,7 +132,7 @@ export class GridService {
   initializeGrid(width: number, height: number, force = false) {
     if (!force && this.nodes().length > 0) return;
 
-    const initialNodes: FossFlowNode[] = [];
+    const initialNodes: Node[] = [];
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         initialNodes.push({
@@ -199,19 +199,19 @@ export class GridService {
   /**
    * Update a single node
    */
-  updateNode(id: string, updates: Partial<FossFlowNode>) {
+  updateNode(id: string, updates: Partial<Node>) {
     this.updateManyNodes([{ id, changes: updates }]);
   }
 
   /**
    * Update multiple nodes in batch with strict limit enforcement
    */
-  updateManyNodes(updates: { id: string; changes: Partial<FossFlowNode> }[]) {
+  updateManyNodes(updates: { id: string; changes: Partial<Node> }[]) {
     if (updates.length === 0) return;
 
     const currentNodes = this.nodes();
     let currentLimitCount = this.modifiedNodesCount();
-    const finalUpdates: { id: string; changes: Partial<FossFlowNode> }[] = [];
+    const finalUpdates: { id: string; changes: Partial<Node> }[] = [];
 
     for (const update of updates) {
       const node = currentNodes.find((n) => n.id === update.id);
@@ -249,13 +249,13 @@ export class GridService {
       floorColor?: string;
     },
   ): boolean {
-    const updates: { id: string; changes: Partial<FossFlowNode> }[] = [];
+    const updates: { id: string; changes: Partial<Node> }[] = [];
 
     for (const { x, y } of coords) {
       const node = this.getNodeAt(x, y);
       if (!node) continue;
 
-      const changes: Partial<FossFlowNode> = {};
+      const changes: Partial<Node> = {};
       let changed = false;
 
       if (settings.objectEnabled) {
@@ -300,8 +300,8 @@ export class GridService {
    * Internal limit check for updateManyNodes
    */
   private checkLimitAndCollision(
-    node: FossFlowNode,
-    changes: Partial<FossFlowNode>,
+    node: Node,
+    changes: Partial<Node>,
     currentLimitCount: number,
   ): { allowed: boolean; newLimitCount: number } {
     const wasModified = this.isModified(node);
@@ -332,11 +332,11 @@ export class GridService {
     return { allowed: true, newLimitCount };
   }
 
-  private isModified(node: FossFlowNode): boolean {
+  private isModified(node: Node): boolean {
     return !!(node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff'));
   }
 
-  private willBeModified(node: FossFlowNode, updates: Partial<FossFlowNode>): boolean {
+  private willBeModified(node: Node, updates: Partial<Node>): boolean {
     const active = updates.active !== undefined ? updates.active : node.active;
     const floorColor = updates.floorColor !== undefined ? updates.floorColor : node.floorColor;
     return !!(active || (floorColor && floorColor.toLowerCase() !== '#ffffff'));
@@ -362,14 +362,14 @@ export class GridService {
   /**
    * Set nodes directly (used by history service)
    */
-  setNodes(nodes: FossFlowNode[]) {
+  setNodes(nodes: Node[]) {
     this.nodes.set(nodes);
   }
 
   /**
    * Set connections directly (used by connection service and history service)
    */
-  setConnections(connections: FossFlowConnection[]) {
+  setConnections(connections: Conection[]) {
     this.connections.set(connections);
   }
 
@@ -392,7 +392,7 @@ export class GridService {
       return '';
     }
 
-    const existing = this.connections().some((c: FossFlowConnection) => {
+    const existing = this.connections().some((c: Conection) => {
       const same = c.fromId === fromId && c.toId === toId;
       const reverse = !directed && c.fromId === toId && c.toId === fromId;
       return same || reverse;
@@ -438,10 +438,10 @@ export class GridService {
     }
 
     const fromDegree = this.connections().filter(
-      (c: FossFlowConnection) => c.fromId === fromId || c.toId === fromId,
+      (c: Conection) => c.fromId === fromId || c.toId === fromId,
     ).length;
     const toDegree = this.connections().filter(
-      (c: FossFlowConnection) => c.fromId === toId || c.toId === toId,
+      (c: Conection) => c.fromId === toId || c.toId === toId,
     ).length;
 
     if (
@@ -474,7 +474,7 @@ export class GridService {
       direction,
       true, // Always allow diagonals
     );
-    this.connections.update((conns: FossFlowConnection[]) => [...conns, newConnection]);
+    this.connections.update((conns: Conection[]) => [...conns, newConnection]);
     this.storageService.saveState(this.nodes(), this.connections());
     return newConnection.id;
   }
@@ -482,7 +482,7 @@ export class GridService {
   /**
    * Update a connection using ConnectionService
    */
-  updateConnection(id: string, updates: Partial<FossFlowConnection>) {
+  updateConnection(id: string, updates: Partial<Conection>) {
     const updated = this.connectionService.updateConnection(id, updates, this.connections());
     this.connections.set(updated);
     this.storageService.saveState(this.nodes(), this.connections());

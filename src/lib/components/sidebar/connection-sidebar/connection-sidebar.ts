@@ -9,7 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { SelectionService } from '../../../services/selection.service';
 import { GridService } from '../../../services/grid.service';
-import { FossFlowConnection } from '../../../models/fossflow.types';
+import { Conection } from '../../../models/fossflow.types';
 import { Sidebar } from '../sidebar';
 
 @Component({
@@ -23,12 +23,12 @@ export class ConnectionSidebar {
   selectionService = inject(SelectionService);
   gridService = inject(GridService);
 
-  @Input({ required: true }) conn!: FossFlowConnection;
-  @Input({ required: true }) getAllowedDirection!: (conn: FossFlowConnection) => string;
+  @Input({ required: true }) conn!: Conection;
+  @Input({ required: true }) getAllowedDirection!: (conn: Conection) => string;
 
   @Output() updateConnection = new EventEmitter<{
     id: string;
-    updates: Partial<FossFlowConnection>;
+    updates: Partial<Conection>;
   }>();
   @Output() onConnectionColorInput = new EventEmitter<{ event: any; id: string }>();
   @Output() deleteConnection = new EventEmitter<string>();

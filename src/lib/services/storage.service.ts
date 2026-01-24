@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/fossflow.types';
 
 @Injectable()
 export class StorageService {
@@ -9,7 +9,7 @@ export class StorageService {
   private readonly CONNECTIONS_KEY = 'zflow_connections';
   private readonly CONNECTION_CONFIG_KEY = 'zflow_connection_config';
 
-  loadNodes(): FossFlowNode[] | null {
+  loadNodes(): Node[] | null {
     if (!isPlatformBrowser(this.platformId)) return null;
     const savedNodes = localStorage.getItem(this.NODES_KEY);
     if (!savedNodes) return null;
@@ -22,7 +22,7 @@ export class StorageService {
     }
   }
 
-  loadConnections(): FossFlowConnection[] | null {
+  loadConnections(): Conection[] | null {
     if (!isPlatformBrowser(this.platformId)) return null;
     const savedConns = localStorage.getItem(this.CONNECTIONS_KEY);
     if (!savedConns) return null;
@@ -35,17 +35,17 @@ export class StorageService {
     }
   }
 
-  saveNodes(nodes: FossFlowNode[]): void {
+  saveNodes(nodes: Node[]): void {
     if (!isPlatformBrowser(this.platformId)) return;
     localStorage.setItem(this.NODES_KEY, JSON.stringify(nodes));
   }
 
-  saveConnections(connections: FossFlowConnection[]): void {
+  saveConnections(connections: Conection[]): void {
     if (!isPlatformBrowser(this.platformId)) return;
     localStorage.setItem(this.CONNECTIONS_KEY, JSON.stringify(connections));
   }
 
-  saveState(nodes: FossFlowNode[], connections: FossFlowConnection[]): void {
+  saveState(nodes: Node[], connections: Conection[]): void {
     this.saveNodes(nodes);
     this.saveConnections(connections);
   }

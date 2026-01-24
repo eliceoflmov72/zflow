@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/fossflow.types';
 
 @Injectable()
 export class ConnectionService {
@@ -23,8 +23,8 @@ export class ConnectionService {
   isTileOccupiedByConnection(
     x: number,
     y: number,
-    connections: FossFlowConnection[],
-    nodes: FossFlowNode[],
+    connections: Conection[],
+    nodes: Node[],
   ): boolean {
     return connections.some((conn) => {
       const path = conn.path || this.calculateDefaultPath(conn, nodes);
@@ -32,10 +32,7 @@ export class ConnectionService {
     });
   }
 
-  private calculateDefaultPath(
-    conn: FossFlowConnection,
-    nodes: FossFlowNode[],
-  ): { x: number; y: number }[] {
+  private calculateDefaultPath(conn: Conection, nodes: Node[]): { x: number; y: number }[] {
     const from = nodes.find((n) => n.id === conn.fromId);
     const to = nodes.find((n) => n.id === conn.toId);
     if (!from || !to) return [];
@@ -62,7 +59,7 @@ export class ConnectionService {
   createConnection(
     fromId: string,
     toId: string,
-    nodes: FossFlowNode[],
+    nodes: Node[],
     gridSize: { width: number; height: number },
     directed = false,
     customPath?: { x: number; y: number }[],
@@ -71,7 +68,7 @@ export class ConnectionService {
     color?: string,
     direction?: 'forward' | 'reverse' | 'bi',
     allowDiagonals: boolean = true,
-  ): FossFlowConnection {
+  ): Conection {
     if (!fromId || !toId) {
       this.debugLog('createConnection: invalid endpoints', { fromId, toId });
       const id = `manual-${Math.random().toString(36).substr(2, 9)}`;
@@ -177,9 +174,9 @@ export class ConnectionService {
   getConnectionAt(
     x: number,
     y: number,
-    connections: FossFlowConnection[],
-    nodes: FossFlowNode[],
-  ): FossFlowConnection | undefined {
+    connections: Conection[],
+    nodes: Node[],
+  ): Conection | undefined {
     return connections.find((conn) => {
       const path = conn.path || this.calculateDefaultPath(conn, nodes);
       return path?.some((p) => Math.round(p.x) === x && Math.round(p.y) === y);
@@ -210,7 +207,7 @@ export class ConnectionService {
 
   pathCollidesWithNodes(
     path: { x: number; y: number }[],
-    nodes: FossFlowNode[],
+    nodes: Node[],
     fromId: string,
     toId: string,
   ): boolean {
@@ -232,7 +229,7 @@ export class ConnectionService {
 
   private routeThroughWaypoints(
     waypoints: { x: number; y: number }[],
-    nodes: FossFlowNode[],
+    nodes: Node[],
     gridSize: { width: number; height: number },
     fromId: string,
     toId: string,
@@ -255,9 +252,9 @@ export class ConnectionService {
   }
 
   private findPath(
-    from: FossFlowNode,
-    to: FossFlowNode,
-    nodes: FossFlowNode[],
+    from: Node,
+    to: Node,
+    nodes: Node[],
     gridSize: { width: number; height: number },
     allowDiagonals: boolean = true,
   ): { x: number; y: number }[] | null {
@@ -277,7 +274,7 @@ export class ConnectionService {
   private findPathBetweenPositions(
     start: { x: number; y: number },
     end: { x: number; y: number },
-    nodes: FossFlowNode[],
+    nodes: Node[],
     gridSize: { width: number; height: number },
     fromId: string,
     toId: string,
@@ -372,15 +369,11 @@ export class ConnectionService {
     return dx < dy ? F * dx + dy : F * dy + dx;
   }
 
-  updateConnection(
-    id: string,
-    updates: Partial<FossFlowConnection>,
-    connections: FossFlowConnection[],
-  ): FossFlowConnection[] {
+  updateConnection(id: string, updates: Partial<Conection>, connections: Conection[]): Conection[] {
     return connections.map((c) => (c.id === id ? { ...c, ...updates } : c));
   }
 
-  removeConnection(id: string, connections: FossFlowConnection[]): FossFlowConnection[] {
+  removeConnection(id: string, connections: Conection[]): Conection[] {
     return connections.filter((c) => c.id !== id);
   }
 }
