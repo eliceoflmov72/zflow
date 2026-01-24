@@ -21,8 +21,14 @@ export class GridService {
   gridSize = signal({ width: 40, height: 40 });
   limitReached = signal(false);
 
-  // Map for O(1) access by coordinate "x,y"
-  private nodeCoordMap = new Map<string, Node>();
+  // Map for O(1) access by coordinate "x,y" - Synchronous computed signal
+  private nodeCoordMap = computed(() => {
+    const map = new Map<string, Node>();
+    for (const node of this.nodes()) {
+      map.set(`${node.position.x},${node.position.y}`, node);
+    }
+    return map;
+  });
 
   // Computed signal for only active nodes to optimize rendering
   activeNodes = computed(() => {
@@ -70,13 +76,9 @@ export class GridService {
     effect(() => {
       if (!isPlatformBrowser(this.platformId)) return;
       const nodes = this.nodes();
-
-      // Update local cache map
-      const newMap = new Map<string, Node>();
-      this.quadtree.clear();
+      Logger.log(`[GridService] Effect running, nodes length: ${nodes.length}`);
 
       for (const node of nodes) {
-        newMap.set(`${node.position.x},${node.position.y}`, node);
         this.quadtree.insert({
           x: node.position.x,
           y: node.position.y,
@@ -84,7 +86,6 @@ export class GridService {
           node: node,
         });
       }
-      this.nodeCoordMap = newMap;
     });
   }
 
@@ -92,7 +93,7 @@ export class GridService {
    * Fast coordinate-based lookup
    */
   getNodeAt(x: number, y: number): Node | undefined {
-    return this.nodeCoordMap.get(`${x},${y}`);
+    return this.nodeCoordMap().get(`${x},${y}`);
   }
 
   /**
@@ -206,6 +207,36 @@ export class GridService {
   }
 
   /**
+   * Paint a rectangular area of nodes
+   */
+  paintRectangle(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    settings: {
+      objectEnabled: boolean;
+      floorEnabled: boolean;
+      shape?: string;
+      objectColor?: string;
+      floorColor?: string;
+    },
+  ): boolean {
+    const coords: { x: number; y: number }[] = [];
+    const minX = Math.min(x1, x2);
+    const maxX = Math.max(x1, x2);
+    const minY = Math.min(y1, y2);
+    const maxY = Math.max(y1, y2);
+
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        coords.push({ x, y });
+      }
+    }
+    return this.paintBatch(coords, settings);
+  }
+
+  /**
    * Update a single node
    */
   updateNode(id: string, updates: Partial<Node>) {
@@ -215,8 +246,8 @@ export class GridService {
   /**
    * Update multiple nodes in batch with strict limit enforcement
    */
-  updateManyNodes(updates: { id: string; changes: Partial<Node> }[]) {
-    if (updates.length === 0) return;
+  updateManyNodes(updates: { id: string; changes: Partial<Node> }[]): number {
+    if (updates.length === 0) return 0;
 
     const currentNodes = this.nodes();
     let currentLimitCount = this.modifiedNodesCount();
@@ -233,7 +264,7 @@ export class GridService {
       }
     }
 
-    if (finalUpdates.length === 0) return;
+    if (finalUpdates.length === 0) return 0;
 
     const updatesMap = new Map(finalUpdates.map((u) => [u.id, u.changes]));
     this.nodes.update((nodes) =>
@@ -243,6 +274,7 @@ export class GridService {
       }),
     );
     this.storageService.saveState(this.nodes(), this.connections());
+    return finalUpdates.length;
   }
 
   /**
@@ -299,8 +331,8 @@ export class GridService {
     }
 
     if (updates.length > 0) {
-      this.updateManyNodes(updates);
-      return true;
+      const applied = this.updateManyNodes(updates);
+      return applied > 0;
     }
     return false;
   }
