@@ -212,7 +212,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
       if (o1 && o2) return null;
     }
 
-    const h = -0.05;
+    const h = 0.0;
     let rawPath = conn.path ? [...conn.path] : [from.position, to.position];
     if (!conn.path && from.position.x !== to.position.x && from.position.y !== to.position.y) {
       rawPath = [from.position, { x: to.position.x, y: from.position.y }, to.position];
@@ -347,7 +347,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private projectNode(node: FossFlowNode, dpr: number, fovFactor: number, quality: any) {
-    const screenPos = this.engine.worldToScreenCached(node.position.x, -0.1, node.position.y);
+    const screenPos = this.engine.worldToScreenCached(node.position.x, 0.0, node.position.y);
     if (!screenPos) return null;
 
     const scale = (3.6 * fovFactor) / screenPos.z;
@@ -408,7 +408,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   });
 
   private projectPreviewTile(x: number, z: number, dpr: number, fovFactor: number) {
-    const sp = this.engine.worldToScreen(x, -0.1, z);
+    const sp = this.engine.worldToScreen(x, 0.0, z);
     if (!sp) return null;
     const scale = (3.6 * fovFactor) / sp.z;
     return {
@@ -1379,7 +1379,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     let allPoints = [...pts];
 
     if (this.activePath().length > 0 && preview && this.engine.initialized) {
-      const sp = this.engine.worldToScreen(preview.x, -0.05, preview.y);
+      const sp = this.engine.worldToScreen(preview.x, 0.0, preview.y);
       if (sp) allPoints.push({ x: sp.x / dpr, y: sp.y / dpr });
     }
 
@@ -1397,7 +1397,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     const dpr = window.devicePixelRatio || 1;
     return path
       .map((p) => {
-        const sp = this.engine.worldToScreen(p.x, -0.05, p.y);
+        const sp = this.engine.worldToScreen(p.x, 0.0, p.y);
         return sp ? { x: sp.x / dpr, y: sp.y / dpr } : null;
       })
       .filter((p): p is { x: number; y: number } => p !== null);

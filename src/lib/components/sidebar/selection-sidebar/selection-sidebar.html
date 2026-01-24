@@ -27,30 +27,37 @@
     (selectShape)="$event ? updateSelectedNodes.emit({ shape3D: $event, active: true }) : updateSelectedNodes.emit({ active: false, floorColor: '#ffffff', color: '#3b82f6', shape3D: 'isometric-cube.svg' })"
   ></visual-objects-tab>
 
-  <div class="ff-section-label">
-    {{ isSingleSelection ? 'Color del Objeto' : 'Color de Objetos' }}
-  </div>
-  <div class="ff-row" style="margin-bottom: 0.5rem;">
-    <div class="ff-field">
-      <input
-        type="color"
-        [value]="(isSingleSelection && singleNode?.color) ? singleNode?.color : '#3b82f6'"
-        (input)="updateSelectedNodes.emit({ color: $any($event.target).value })"
-        style="width: 100%;"
-      />
+  @if (!isImageSelected) {
+    <div class="ff-section-label">
+      {{ isSingleSelection ? 'Color del Objeto' : 'Color de Objetos' }}
     </div>
-  </div>
-  <!-- Recent Colors -->
-  @if (recentColors().length > 0) {
-    <div class="ff-recent-colors">
-      @for (color of recentColors(); track color) {
-        <div
-          class="ff-color-swatch"
-          [style.background-color]="color"
-          (click)="updateSelectedNodes.emit({ color: color })"
-          [title]="color"
-        ></div>
-      }
+    <div class="ff-row" style="margin-bottom: 0.5rem;">
+      <div class="ff-field">
+        <input
+          type="color"
+          [value]="(isSingleSelection && singleNode?.color) ? singleNode?.color : '#3b82f6'"
+          (input)="updateSelectedNodes.emit({ color: $any($event.target).value })"
+          style="width: 100%;"
+        />
+      </div>
+    </div>
+    <!-- Recent Colors -->
+    @if (recentColors().length > 0) {
+      <div class="ff-recent-colors">
+        @for (color of recentColors(); track color) {
+          <div
+            class="ff-color-swatch"
+            [style.background-color]="color"
+            (click)="updateSelectedNodes.emit({ color: color })"
+            [title]="color"
+          ></div>
+        }
+      </div>
+    }
+  } @else {
+    <div class="ff-section-label">Color del Objeto</div>
+    <div class="ff-info-text" style="font-size: 0.75rem; color: #64748b; margin-bottom: 1rem; padding: 0 0.5rem;">
+      <i class="pi pi-info-circle"></i> Las imágenes no permiten cambiar el color.
     </div>
   }
 

@@ -44,4 +44,8 @@ export class SelectionSidebar {
     }
     return `Selección Múltiple (${this.selectedNodes.length})`;
   }
+
+  get isImageSelected(): boolean {
+    return this.selectedNodes.some((n) => n.shape3D?.toLowerCase().endsWith('.png'));
+  }
 }

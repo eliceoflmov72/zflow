@@ -48,42 +48,48 @@
       (selectShape)="brushShape.set($event || '')"
     ></visual-objects-tab>
 
-    <div class="ff-row" style="margin-bottom: 0.5rem;">
-      <div class="ff-field">
-        <label>Color Objeto</label>
-        <input
-          type="color"
-          [value]="brushObjectColor()"
-          (input)="brushObjectColor.set($any($event.target).value)"
-          style="width: 100%;"
-        />
+    @if (!isImageShape()) {
+      <div class="ff-row" style="margin-bottom: 0.5rem">
+        <div class="ff-field">
+          <label>Color Objeto</label>
+          <input
+            type="color"
+            [value]="brushObjectColor()"
+            (input)="brushObjectColor.set($any($event.target).value)"
+            style="width: 100%"
+          />
+        </div>
       </div>
-    </div>
-    <!-- Recent Object Colors -->
-    @if (recentColors().length > 0) {
-      <div class="ff-recent-colors">
-        @for (color of recentColors(); track color) {
-          <div
-            class="ff-color-swatch"
-            [style.background-color]="color"
-            (click)="brushObjectColor.set(color)"
-            [title]="color"
-          ></div>
-        }
+      <!-- Recent Object Colors -->
+      @if (recentColors().length > 0) {
+        <div class="ff-recent-colors">
+          @for (color of recentColors(); track color) {
+            <div
+              class="ff-color-swatch"
+              [style.background-color]="color"
+              (click)="brushObjectColor.set(color)"
+              [title]="color"
+            ></div>
+          }
+        </div>
+      }
+    } @else {
+      <div class="ff-info-text" style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem; padding: 0 0.5rem;">
+        <i class="pi pi-info-circle"></i> Las imágenes no permiten cambiar el color.
       </div>
     }
   }
 
   @if (paintFloorEnabled()) {
-    <div class="ff-section-label" style="margin-top: 1rem;">Configuración Suelo</div>
-    <div class="ff-row" style="margin-bottom: 0.5rem;">
+    <div class="ff-section-label" style="margin-top: 1rem">Configuración Suelo</div>
+    <div class="ff-row" style="margin-bottom: 0.5rem">
       <div class="ff-field">
         <label>Color Suelo</label>
         <input
           type="color"
           [value]="brushFloorColor()"
           (input)="brushFloorColor.set($any($event.target).value)"
-          style="width: 100%;"
+          style="width: 100%"
         />
       </div>
     </div>

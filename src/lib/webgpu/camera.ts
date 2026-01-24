@@ -59,7 +59,7 @@ export class Camera {
     if (!this.dirty) return;
 
     const fov = (this._zoom * Math.PI) / 180;
-    Mat4.perspective(this.projection, fov, this._aspect, 0.1, 5000);
+    Mat4.perspective(this.projection, fov, this._aspect, 0.5, 10000);
 
     // Calculate position based on rotation and target
     // The distance in XZ plane is kept constant to maintain isometric feel

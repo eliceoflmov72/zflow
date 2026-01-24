@@ -37,7 +37,11 @@ export class WebGPUEngine {
 
   public camera = new Camera();
   public initialized = false;
-  private readonly maxInstances = 10000;
+  private readonly maxInstances = 100000;
+
+  // Hysteresis for culling stability
+  private lastStableBounds: { x: number; y: number; width: number; height: number } | null = null;
+  private readonly CULLING_HYSTERESIS = 15.0;
 
   private readonly CLEAR_COLOR = { r: 0xe5 / 255, g: 0xea / 255, b: 0xf1 / 255, a: 1.0 };
 
@@ -148,25 +152,29 @@ export class WebGPUEngine {
       fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         let x = in.world_pos.x;
         let z = in.world_pos.z;
-        
-        // Local coordinates within the 1x1 tile [-0.5, 0.5]
         let p = abs(vec2<f32>(fract(x + 0.5) - 0.5, fract(z + 0.5) - 0.5));
         
-        // Rectangular Box (Straight edges)
-        // 0.48 means the white part is 96% of the tile, leaving a 4% grey gap
+        let fw = fwidth(in.world_pos.xz);
+        // Clamp edge to prevent shimmering during fast camera movements
+        let edge = clamp(max(fw.x, fw.y) * 2.0, 0.005, 0.05);
+        
         let size = 0.48;
-        let is_inside = step(p.x, size) * step(p.y, size);
+        let dist = max(p.x, p.y) - size;
         
-        // Exact Space Grey for gaps
-        let bgColor = vec4<f32>(0.898, 0.918, 0.945, 1.0);
+        let is_inside = 1.0 - smoothstep(-edge, edge, dist);
         
-        // Blend Node Color (White) with Background (Grey)
-        var finalColor = mix(bgColor, in.color, is_inside);
+        if (is_inside <= 0.0) {
+            discard;
+        }
         
-        // Selection Highlight (Straight border)
+        var finalColor = vec4<f32>(in.color.rgb, in.color.a * is_inside);
+        
+        // Selection Highlight
         if (in.is_selected > 0.5) {
-          let is_border = step(0.44, max(p.x, p.y)) * is_inside;
-          finalColor = mix(finalColor, vec4<f32>(0.23, 0.51, 0.96, 1.0), is_border);
+          let border_dist = max(p.x, p.y) - 0.46;
+          let is_border = (1.0 - smoothstep(-edge, edge, border_dist)) * is_inside;
+          let selectionColor = vec4<f32>(0.23, 0.51, 0.96, 1.0);
+          finalColor = mix(finalColor, selectionColor, is_border * 0.9);
         }
 
         return finalColor;
@@ -223,8 +231,14 @@ export class WebGPUEngine {
         depthWriteEnabled: true,
         depthCompare: 'less',
         format: 'depth24plus',
+        // Favor tiles over the grid plane at the same Y
+        depthBias: -100,
+        depthBiasSlopeScale: -1.0,
       },
-      multisample: { count: this.sampleCount },
+      multisample: {
+        count: this.sampleCount,
+        alphaToCoverageEnabled: true,
+      },
     });
   }
 
@@ -260,18 +274,17 @@ export class WebGPUEngine {
         // Local coordinates within the 1x1 tile [-0.5, 0.5]
         let p = fract(vec2<f32>(x + 0.5, z + 0.5)) - 0.5;
         
-        // Analytical Anti-Aliasing: Calculate pixel footprint in world space
-        // This ensures lines are always approximately 1 pixel wide on screen
+        // Analytical Anti-Aliasing
         let fw = fwidth(in.world_pos.xz);
-        let edge = fw * 0.7; // Tweak for line sharpness
+        let edge = max(fw.x, fw.y) * 1.5 + 0.001; 
         
-        // Define the white tile area (0.485 = slightly less than 0.5 to leave a gap)
+        // Define the white tile area
         let size = 0.485;
         let distArr = abs(p) - size;
         let dist = max(distArr.x, distArr.y);
         
-        // Smooth mask that stays sharp at any zoom level
-        let mask = smoothstep(edge.x, -edge.x, dist);
+        // Smooth mask
+        let mask = 1.0 - smoothstep(-edge, edge, dist);
         
         // Colors
         let bgColor = vec4<f32>(0.898, 0.918, 0.945, 1.0); // Space Grey
@@ -279,14 +292,10 @@ export class WebGPUEngine {
         
         // Fade out grid lines at extreme distance to avoid Moire/noise
         let pixelSize = max(fw.x, fw.y);
-        let gridFade = 1.0 - smoothstep(0.4, 0.8, pixelSize);
+        let gridFade = 1.0 - smoothstep(0.12, 0.45, pixelSize);
         
-        var finalColor = mix(bgColor, tileColor, mask * gridFade + (1.0 - gridFade));
-        
-        // To make it look "White" but with lines, we blend:
-        finalColor = mix(bgColor, tileColor, mask);
-        
-        return finalColor;
+        // At a distance, the grid should dissolve into the background color smoothly
+        return mix(bgColor, tileColor, mask * gridFade);
       }
     `;
 
@@ -327,8 +336,8 @@ export class WebGPUEngine {
       },
       primitive: { topology: 'triangle-list' },
       depthStencil: {
-        depthWriteEnabled: true,
-        depthCompare: 'less',
+        depthWriteEnabled: false,
+        depthCompare: 'always',
         format: 'depth24plus',
       },
       multisample: { count: this.sampleCount },
@@ -382,8 +391,8 @@ export class WebGPUEngine {
     });
 
     // Create Grid Buffer (Huge Quad)
-    const s = 5000.0;
-    const y = -0.005; // Slightly below zero to avoid z-fighting with tiles
+    const s = 10000.0;
+    const y = 0.0; // Perfect alignment with clicking plane
     const gridData = new Float32Array([-s, y, -s, s, y, -s, -s, y, s, -s, y, s, s, y, -s, s, y, s]);
     this.gridVertexBuffer = this.createBuffer(gridData, GPUBufferUsage.VERTEX);
 
@@ -413,8 +422,8 @@ export class WebGPUEngine {
     const height = Math.floor(this.context.canvas.height);
     if (
       !this.depthTexture ||
-      this.depthTexture.width !== width ||
-      this.depthTexture.height !== height
+      Math.abs(this.depthTexture.width - width) > 1 ||
+      Math.abs(this.depthTexture.height - height) > 1
     ) {
       if (this.depthTexture) this.depthTexture.destroy();
       if (this.multisampledTexture) this.multisampledTexture.destroy();
@@ -433,19 +442,22 @@ export class WebGPUEngine {
     }
   }
 
-  private generateNodesDataHash(nodes: FossFlowNode[], selectedId: string | null): string {
-    // We only need to track properties that affect the floor render:
-    // positions, colors, active state, and selection.
-    // Instead of a full hash, we can sample key properties or use a version counter if available.
-    // For now, a string join of IDs and essential states for the first N nodes is a good balance.
-    const sampleSize = Math.min(nodes.length, 500);
-    let hash = `${nodes.length}_${selectedId || ''}`;
-    for (let i = 0; i < sampleSize; i++) {
+  private generateNodesDataHash(
+    nodes: FossFlowNode[],
+    selectedId: string | null,
+    bounds: any,
+  ): string {
+    // We MUST include bounds in the hash because they determine which nodes are in 'nodes' array.
+    // If we move the camera and the culling set changes, the hash MUST change.
+    const boundsPart = bounds ? `${bounds.x},${bounds.y},${bounds.width},${bounds.height}` : 'all';
+
+    const sampleSize = Math.min(nodes.length, 5000);
+    let hash = `v7_${nodes.length}_${selectedId || ''}_${boundsPart}`;
+
+    for (let i = 0; i < sampleSize; i += 2) {
+      // Sample every 2 nodes for performance if many
       const n = nodes[i];
-      const hasFloor = n.floorColor && n.floorColor.toLowerCase() !== '#ffffff';
-      if (n.active || hasFloor) {
-        hash += `|${n.id}:${n.position.x},${n.position.y}:${n.floorColor || ''}`;
-      }
+      hash += `|${n.id.slice(-3)}@${n.position.x},${n.position.y}:${n.floorColor || ''}`;
     }
     return hash;
   }
@@ -488,14 +500,12 @@ export class WebGPUEngine {
   render(nodes: FossFlowNode[], selectedId: string | null): boolean {
     if (!this.device || !this.pipeline || !this.gridPipeline || !this.initialized) return false;
 
-    // ==================== ADAPTIVE FRAME RATE ====================
-    // Record frame timing for adaptive quality
+    // ==================== PERFORMANCE MONITORING ====================
     this.frameController.recordFrame();
 
-    // Check if we should skip this frame (for potato mode)
-    if (!this.frameController.shouldRenderFrame()) {
-      return false; // Frame skipped
-    }
+    // Note: We avoid skipping frames (shouldRenderFrame) in the editor
+    // to prevent blank-frame flickering in WebGPU.
+    // Quality settings are still used for MSAA and other optimizations.
 
     // Get current quality settings
     const quality = this.frameController.getQualitySettings();
@@ -510,15 +520,38 @@ export class WebGPUEngine {
 
     this.updateTextures();
 
-    // ==================== OPTIMIZED INSTANCE GENERATION ====================
-    // GPU is very fast at instancing,
-    // real bottleneck is DOM. Let GPU draw everything it can.
-    const maxNodesGPU = 20000;
-    const limitedNodes = nodes.length > maxNodesGPU ? nodes.slice(0, maxNodesGPU) : nodes;
+    // ==================== FRUSTUM CULLING (STABLE) ====================
+    // Quantize bound logic but keep it reactive to current view
+    let rawBounds = this.getVisibleBounds();
+    let bounds = rawBounds;
+    if (bounds) {
+      bounds.x = Math.floor(bounds.x / 10) * 10;
+      bounds.y = Math.floor(bounds.y / 10) * 10;
+      bounds.width = Math.ceil(bounds.width / 10) * 10 + 20;
+      bounds.height = Math.ceil(bounds.height / 10) * 10 + 20;
+    }
+
+    const visibleNodes = bounds
+      ? nodes.filter((n) => {
+          const hasFloor = n.floorColor && n.floorColor.toLowerCase() !== '#ffffff';
+          if (!n.active && !hasFloor) return false;
+
+          return (
+            n.position.x >= bounds!.x &&
+            n.position.x <= bounds!.x + bounds!.width &&
+            n.position.y >= bounds!.y &&
+            n.position.y <= bounds!.y + bounds!.height
+          );
+        })
+      : nodes.filter((n) => n.active || (n.floorColor && n.floorColor.toLowerCase() !== '#ffffff'));
+
+    const maxNodesGPU = this.maxInstances;
+    const limitedNodes =
+      visibleNodes.length > maxNodesGPU ? visibleNodes.slice(0, maxNodesGPU) : visibleNodes;
 
     // DIRTY TRACKING: Only re-upload if nodes data actually changed
     // This saves massive CPU time during camera movements
-    const currentHash = this.generateNodesDataHash(limitedNodes, selectedId);
+    const currentHash = this.generateNodesDataHash(limitedNodes, selectedId, bounds);
     let instanceCount = this.lastRenderStats.instanceCount;
 
     if (currentHash !== this.lastNodesDataHash) {
@@ -530,7 +563,7 @@ export class WebGPUEngine {
         this.floorInstanceBuffer,
         0,
         instanceData.buffer as any,
-        0,
+        instanceData.byteOffset,
         instanceData.byteLength,
       );
       instanceCount = instanceData.length / 8;
@@ -709,10 +742,10 @@ export class WebGPUEngine {
 
     if (corners.length === 0) return null;
 
-    const minX = Math.min(...corners.map((c) => c.x)) - 2;
-    const maxX = Math.max(...corners.map((c) => c.x)) + 2;
-    const minZ = Math.min(...corners.map((c) => c.z)) - 2;
-    const maxZ = Math.max(...corners.map((c) => c.z)) + 2;
+    const minX = Math.min(...corners.map((c) => c.x)) - 15;
+    const maxX = Math.max(...corners.map((c) => c.x)) + 15;
+    const minZ = Math.min(...corners.map((c) => c.z)) - 15;
+    const maxZ = Math.max(...corners.map((c) => c.z)) + 15;
 
     return { x: minX, y: minZ, width: maxX - minX, height: maxZ - minZ };
   }

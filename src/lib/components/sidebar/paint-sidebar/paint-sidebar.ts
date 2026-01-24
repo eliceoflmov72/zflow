@@ -1,4 +1,11 @@
-import { Component, Input, Signal, WritableSignal, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  Input,
+  Signal,
+  WritableSignal,
+  ChangeDetectionStrategy,
+  computed,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Sidebar } from '../sidebar';
 import { VisualObjectsTab } from '../../visual-objects-tab/visual-objects-tab';
@@ -19,4 +26,9 @@ export class PaintSidebar {
   @Input({ required: true }) brushFloorColor!: WritableSignal<string>;
   @Input({ required: true }) availableSvgs!: Signal<string[]>;
   @Input({ required: true }) recentColors!: Signal<string[]>;
+
+  isImageShape = computed(() => {
+    const shape = this.brushShape();
+    return shape ? shape.toLowerCase().endsWith('.png') : false;
+  });
 }
