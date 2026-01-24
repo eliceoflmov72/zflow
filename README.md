@@ -1,205 +1,149 @@
-# ZFlow Diagram Editor
+# ZFlow 3D Editor
 
-Advanced 3D Isometric Diagram Editor built with **Angular 21** and **Pure WebGPU**.
+Advanced 3D Isometric Diagram and Grid Editor built with **Angular 21** and **Pure WebGPU**.
 
-## Features
+ZFlow is a high-performance, standalone library designed for creating interactive 3D diagrams, floor plans, and isometric visualizations directly in the browser using modern GPU acceleration.
 
-- **100% Native WebGPU**: No dependencies like Three.js or Babylon.js.
-- **High Performance**: Geometry instancing for thousands of nodes.
-- **Isometric Perspective**: Realistic 3D view with camera controls.
-- **Interactive**: Node selection via raycasting and real-time editing.
-- **Standalone**: Lightweight Angular components with zero external dependencies (except Angular core).
-- **Fully Decoupled**: Can be used independently in any Angular application.
+## 🚀 Features
 
-## Installation
+- **100% Native WebGPU**: No heavy dependencies like Three.js or Babylon.js. Uses custom shaders for maximum performance.
+- **High Performance**: Geometry instancing allows rendering thousands of elements even on low-end hardware.
+- **Isometric Perspective**: Realistic 3D view with intuitive camera controls (Pan, Rotate, Zoom).
+- **Interactive Editor**: Built-in tools for painting, connecting, and selecting objects.
+- **Adaptive Quality**: Automatically adjusts rendering settings to maintain a smooth framerate.
+- **Fully Decoupled**: Zero external UI dependencies. All components and modales are self-contained.
+
+## 📦 Installation
 
 ```bash
 npm install zflow
 ```
 
-## Peer Dependencies
-
-ZFlow requires the following peer dependencies:
-
-- `@angular/common`: ^21.0.0
-- `@angular/core`: ^21.0.0
-
-## Setup
+## 🛠️ Setup
 
 ### 1. Import the Component
 
-Import `ZFlowEditor` in your standalone component:
-
-```typescript
-import { ZFlowEditor } from 'zflow';
-
-@Component({
-  selector: 'app-diagram',
-  standalone: true,
-  imports: [ZFlowEditor],
-  template: `<zflow-editor></zflow-editor>`,
-})
-export class DiagramComponent {}
-```
-
-### 2. Copy Assets
-
-ZFlow requires static assets (SVG icons, forms, and images) to be available in your application's public directory. After installing zflow, copy the assets to your application's public folder:
-
-**For Angular applications:**
-
-1. Locate the `public` folder in the zflow package (typically in `node_modules/zflow/public`)
-2. Copy the contents to your application's `public` or `assets` folder:
-
-```bash
-# Example: Copy assets to your Angular app's public folder
-cp -r node_modules/zflow/public/* src/public/
-```
-
-Or configure your `angular.json` to include the assets:
-
-```json
-{
-  "projects": {
-    "your-app": {
-      "architect": {
-        "build": {
-          "options": {
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "node_modules/zflow/public",
-                "output": "/"
-              }
-            ]
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-**Required asset paths:**
-
-- `/forms/` - SVG form shapes (isometric-cube.svg, isometric-sphere.svg, etc.)
-- `/images/` - PNG images (car.png, code.png, database.png, etc.)
-- `/icons/` - SVG icons (cursor-select.svg, hand-pan.svg, etc.)
-
-### 3. WebGPU Support
-
-ZFlow requires WebGPU support. Ensure your application runs in a browser that supports WebGPU (Chrome 113+, Edge 113+, or other Chromium-based browsers).
-
-## Usage Example
+Import `ZFlowEditor` (and optionally the types) in your standalone component:
 
 ```typescript
 import { Component } from '@angular/core';
-import { ZFlowEditor } from 'zflow';
-import { Node, Conection } from 'zflow';
+import { ZFlowEditor, Node, Conection } from 'zflow';
 
 @Component({
-  selector: 'app-diagram-editor',
+  selector: 'app-my-editor',
   standalone: true,
   imports: [ZFlowEditor],
   template: `
-    <zflow-editor
-      [nodes]="initialNodes"
-      [connections]="initialConnections"
-      (nodesChange)="onNodesChange($event)"
-      (connectionsChange)="onConnectionsChange($event)"
-    ></zflow-editor>
+    <div style="height: 600px; width: 100%;">
+      <zflow-editor
+        [nodes]="initialNodes"
+        [gridSize]="{ width: 40, height: 40 }"
+        (nodesChange)="onNodesUpdate($event)"
+      ></zflow-editor>
+    </div>
   `,
 })
-export class DiagramEditorComponent {
-  initialNodes: Node[] = [
-    {
-      id: '1',
-      x: 0,
-      y: 0,
-      z: 0,
-      color: '#3b82f6',
-      shape3D: 'isometric-cube.svg',
-    },
-  ];
+export class MyEditorComponent {
+  initialNodes: Node[] = [];
 
-  initialConnections: Conection[] = [];
-
-  onNodesChange(nodes: Node[]): void {
-    console.log('Nodes updated:', nodes);
-  }
-
-  onConnectionsChange(connections: Conection[]): void {
-    console.log('Connections updated:', connections);
+  onNodesUpdate(nodes: Node[]) {
+    console.log('State updated:', nodes);
   }
 }
 ```
 
-## API
+### 2. Assets Configuration
 
-### ZFlowEditor Component
+ZFlow requires static assets (SVG forms, icons, and textures) to be served from specific paths. You need to copy the `public` folder from the package to your application's public directory.
 
-**Inputs:**
+**Recommended `angular.json` config:**
 
-- `nodes: Node[]` - Initial nodes to display
-- `connections: Conection[]` - Initial connections between nodes
+```json
+{
+  "assets": [
+    {
+      "glob": "**/*",
+      "input": "node_modules/zflow/public",
+      "output": "/"
+    }
+  ]
+}
+```
 
-**Outputs:**
+**Required paths:**
 
-- `nodesChange: EventEmitter<Node[]>` - Emitted when nodes are modified
-- `connectionsChange: EventEmitter<Conection[]>` - Emitted when connections are modified
+- `/forms/` (SVG shapes)
+- `/images/` (Textures/Sprites)
+- `/icons/` (UI Icons)
 
-### Types
+### 3. WebGPU Compatibility
+
+Your application must run in a browser with **WebGPU** enabled (Chrome 113+, Edge 113+, etc.). The component includes an automatic fallback or error message for unsupported browsers.
+
+---
+
+## 📖 API Reference
+
+### Input Properties
+
+- **`nodes`** (`Node[]`): Colección inicial de objetos y estados de la cuadrícula.
+- **`gridSize`** (`{ width: number; height: number }`): Dimensiones del área de trabajo (por defecto 40x40).
+
+### Output Events
+
+- **`nodesChange`** (`Node[]`): Se dispara cuando un objeto es creado, movido, pintado o eliminado.
+
+---
+
+## 🧩 Data Models
+
+### Node
+
+Represents an object or a tile state in the grid.
 
 ```typescript
 interface Node {
   id: string;
-  x: number;
-  y: number;
-  z: number;
+  position: { x: number; y: number; z?: number };
+  title: string;
+  description: string;
+  shape3D: string; // Filename in /forms/ or /images/
   color: string;
-  shape3D?: string;
-  lod?: 'low' | 'high';
+  floorColor: string;
+  active: boolean;
+  height?: number;
 }
+```
 
+### Conection
+
+Represents a logical relationship between points or nodes.
+
+```typescript
 interface Conection {
   id: string;
-  sourceId: string;
-  targetId: string;
+  fromId: string;
+  toId: string;
+  directed: boolean;
+  direction?: 'forward' | 'reverse' | 'bi';
   style?: 'straight' | 'rounded';
   lineType?: 'solid' | 'dashed';
+  color?: string;
+  weight?: number;
+  path?: { x: number; y: number }[];
 }
 ```
 
-## Development
+---
 
-To build the library:
+## 🏛️ Architecture
 
-```bash
-npm run build
-```
+ZFlow is designed to be completely autonomous:
 
-To watch for changes:
+- **No Workspace Dependencies**: Uses its own isolated config.
+- **Internal UI**: Includes its own buttons, toolbars, and modals (optimized for the 3D canvas).
+- **Service Driven**: Logic is decoupled into `GridService`, `ConnectionService`, and `WebGPUEngine`.
 
-```bash
-npm run watch
-```
+## 📜 License
 
-## Architecture
-
-ZFlow is designed to be completely independent:
-
-- **No workspace dependencies**: Uses its own TypeScript configuration
-- **No shared components**: All UI components are self-contained
-- **Standalone components**: All components are standalone Angular components
-- **Pure WebGPU**: No external 3D libraries required
-- **Zero runtime dependencies**: Only requires Angular core packages
-
-## Browser Support
-
-- Chrome 113+
-- Edge 113+
-- Other Chromium-based browsers with WebGPU support
-
-## License
-
-[Your License Here]
+[Zemios Nebula License]

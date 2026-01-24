@@ -6,24 +6,24 @@ Este documento detalla las técnicas de optimización implementadas para maximiz
 
 ## 📊 Resumen de Técnicas Implementadas
 
-| Técnica                    | Impacto | Complejidad | Estado             |
-| -------------------------- | ------- | ----------- | ------------------ |
-| Adaptive Frame Rate        | Alto    | Media       | ✅ Implementado    |
-| Dynamic LOD (CPU)          | Alto    | Baja        | ✅ Implementado    |
-| Multi-Level Grid LOD (GPU) | Alto    | Media       | ✅ Implementado    |
-| Spatial Hash O(1)          | Alto    | Baja        | ✅ Implementado    |
-| LRU Projection Cache       | Medio   | Baja        | ✅ Implementado    |
-| Quality Presets            | Alto    | Baja        | ✅ Implementado    |
-| Object Pooling (DOM)       | Alto    | Media       | ✅ Framework listo |
-| Throttled Signals          | Medio   | Baja        | ✅ Framework listo |
-| Shader LOD (GPU)           | Alto    | Media       | ✅ Ya existía      |
-| Quadtree Spatial           | Medio   | Media       | ✅ Ya existía      |
+### Técnicas Clave
+
+- ✅ **Adaptive Frame Rate**: Ajuste dinámico de FPS (Alto Impacto).
+- ✅ **Dynamic LOD (CPU)**: Niveles de detalle adaptativos (Alto Impacto).
+- ✅ **Multi-Level Grid LOD (GPU)**: Cuadrícula procedural optimizada (Alto Impacto).
+- ✅ **Spatial Hash O(1)**: Búsquedas espaciales ultra-rápidas (Alto Impacto).
+- ✅ **LRU Projection Cache**: Cache de proyecciones matemáticas (Medio Impacto).
+- ✅ **Quality Presets**: Ajustes automáticos predefinidos (Alto Impacto).
+- ✅ **Object Pooling (DOM)**: Reutilización de elementos HTML/SVG (Listo).
+- ✅ **Throttled Signals**: Estrangulamiento de actualizaciones reactivas (Listo).
+- ✅ **Shader LOD (GPU)**: Optimización nativa en WebGPU (Alto Impacto).
+- ✅ **Quadtree Spatial**: Particionado espacial secundario (Medio Impacto).
 
 ---
 
 ## 🎯 1. Adaptive Frame Rate Controller
 
-**Archivo:** `performance-optimizer.ts` → `AdaptiveFrameController`
+**Archivo:** `optimizer.ts` → `AdaptiveFrameController`
 
 ### Cómo Funciona:
 
@@ -33,23 +33,34 @@ Este documento detalla las técnicas de optimización implementadas para maximiz
 
 ```typescript
 const thresholds = {
-  ultra: 8ms,   // 120+ FPS
-  high: 16ms,   // 60+ FPS
-  medium: 25ms, // 40+ FPS
-  low: 33ms,    // 30+ FPS
-  potato: 50ms  // 20+ FPS
+  ultra: 9ms,   // 110+ FPS
+  high: 20ms,   // 50+ FPS
+  medium: 35ms, // 30+ FPS
+  low: 50ms,    // 20+ FPS
+  potato: 70ms  // <15 FPS
 };
 ```
 
 ### Frame Skipping:
 
-- En **potato mode**: Salta cada 2do frame (render a 30 FPS máximo)
-- En **low mode**: Salta cada 3er frame (render a 40 FPS máximo)
-- Esto libera CPU para mantener la interactividad
+- En **potato mode**: Ejecuta lógica pesada cada 5 frames.
+- En **low mode**: Ejecuta lógica pesada cada 3 frames.
+- En **medium mode**: Ejecuta lógica pesada cada 2 frames.
+- Esto libera CPU para mantener la interactividad en el renderizado (que se mantiene estable).
 
 ### Hysteresis:
 
-Incluye un margen de 2ms para evitar "flickering" entre niveles de calidad.
+Incluye un margen de 5ms para evitar "flickering" entre niveles de calidad.
+
+---
+
+## 🛑 2. Límite Geométrico (Hard Limit)
+
+Para garantizar un rendimiento fluido incluso en el modo más bajo, se ha impuesto un límite estricto de **60 objetos modificados** (activos o con suelo pintado).
+
+- **Control Proactivo:** El `GridService` bloquea nuevas ediciones al llegar a 60.
+- **Feedback:** Un modal premium avisa al usuario cuando se agota la cuota.
+- **Batching:** Las operaciones masivas (rectángulos) se validan secuencialmente hasta agotar el cupo disponible.
 
 ---
 
@@ -57,15 +68,30 @@ Incluye un margen de 2ms para evitar "flickering" entre niveles de calidad.
 
 Cada nivel de calidad ajusta automáticamente:
 
-| Parámetro            | Ultra  | High  | Medium | Low   | Potato |
-| -------------------- | ------ | ----- | ------ | ----- | ------ |
-| Max Nodes Visibles   | 10,000 | 5,000 | 2,000  | 1,000 | 500    |
-| LOD High Threshold   | 0.3    | 0.4   | 0.5    | 0.6   | 0.8    |
-| LOD Medium Threshold | 0.15   | 0.2   | 0.25   | 0.3   | 0.4    |
-| MSAA Samples         | 4x     | 4x    | 2x     | 1x    | 1x     |
-| Shadows              | ✅     | ✅    | ❌     | ❌    | ❌     |
-| Animaciones          | ✅     | ✅    | ✅     | ❌    | ❌     |
-| Signal Throttle      | 0ms    | 0ms   | 16ms   | 33ms  | 50ms   |
+### Ultra (Hardware TOP)
+
+- **Max Nodes**: 10,000
+- **LOD High/Medium**: 1.0 (Sin degradación)
+- **MSAA**: 4x
+- **Sombras/Animaciones**: ✅ Activadas
+- **Signal Throttle**: Sin retraso
+
+### High / Medium (Hardware Estándar)
+
+- **Max Nodes**: 2,000 - 5,000
+- **LOD High**: 0.4 - 0.5
+- **MSAA**: 4x
+- **Sombras**: ❌ Desactivadas
+- **Animaciones**: ✅ Activadas
+- **Signal Throttle**: 16ms
+
+### Low / Potato (Bajo Rendimiento)
+
+- **Max Nodes**: < 1,000
+- **LOD High**: 0.8 (Agresivo)
+- **MSAA**: ❌ Desactivado (1x)
+- **Sombras/Animaciones**: ❌ Desactivadas
+- **Signal Throttle**: 33ms - 50ms
 
 ---
 
@@ -140,18 +166,16 @@ Los umbrales de LOD **se ajustan según el rendimiento**:
 
 ## 🌐 6. Multi-Level Grid LOD (GPU Shader)
 
-**Archivo:** `webgpu-engine.ts` → `setupGridPipeline()` shader
+**Archivo:** `engine.ts` → `setupGridPipeline()` shader
 
 Esta técnica implementa un sistema de mipmapping para la cuadrícula procedural, mostrando diferentes niveles de detalle según la distancia.
 
 ### Niveles de Grid:
 
-| Nivel | Escala  | Distancia (pixel size) | Descripción                 |
-| ----- | ------- | ---------------------- | --------------------------- |
-| 0     | 1x1     | w < 0.15               | Grid fino, muy cerca        |
-| 1     | 10x10   | w < 1.5                | Grid medio, distancia media |
-| 2     | 100x100 | w < 15.0               | Grid grueso, lejos          |
-| 3+    | Sólido  | w >= 15.0              | Sin líneas, muy lejos       |
+- **Level 0 (1x1)**: Grid fino visible en distancias cortas (< 0.15 pixel size).
+- **Level 1 (10x10)**: Grid medio para referencia espacial intermedia (< 1.5 pixel size).
+- **Level 2 (100x100)**: Grid grueso para planos lejanos (< 15.0 pixel size).
+- **Level 3 (Sólido)**: Sin líneas para evitar ruido visual en distancias extremas.
 
 ### Código WGSL:
 
@@ -215,7 +239,7 @@ Se añadió un indicador en tiempo real:
 ### Activar/Desactivar:
 
 ```typescript
-this.showPerformanceStats.set(false); // Ocultar en producción
+this.showPerformanceStats.set(false);
 ```
 
 ---

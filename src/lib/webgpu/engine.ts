@@ -74,7 +74,6 @@ export class WebGPUEngine {
 
   // Dynamic MSAA based on performance
   private dynamicSampleCount = 4;
-  private needsPipelineRebuild = false;
 
   // Dirty tracking for GPU buffer optimization
   private lastNodesDataHash = '';
@@ -104,7 +103,7 @@ export class WebGPUEngine {
     console.log('[WebGPUEngine] Context configured');
 
     await this.setupPipeline();
-    this.setupGridPipeline();
+    await this.setupGridPipeline();
     this.createGeometries();
     this.createBuffers();
 
@@ -113,7 +112,7 @@ export class WebGPUEngine {
     return true;
   }
 
-  private setupPipeline() {
+  private async setupPipeline() {
     const shaderCode = `
       struct Uniforms {
         viewProjectionMatrix: mat4x4<f32>,
@@ -237,12 +236,12 @@ export class WebGPUEngine {
       },
       multisample: {
         count: this.sampleCount,
-        alphaToCoverageEnabled: this.sampleCount > 1, // MSAA must be disabled if sampleCount is 1
+        alphaToCoverageEnabled: this.sampleCount > 1,
       },
     });
   }
 
-  private setupGridPipeline() {
+  private async setupGridPipeline() {
     const shaderCode = `
       struct Uniforms {
         viewProjectionMatrix: mat4x4<f32>,
@@ -260,7 +259,6 @@ export class WebGPUEngine {
         @location(0) pos: vec3<f32>
       ) -> VertexOutput {
         var out: VertexOutput;
-        // Pos is already world position for the huge quad
         out.clip_pos = uniforms.viewProjectionMatrix * vec4<f32>(pos, 1.0);
         out.world_pos = pos;
         return out;
@@ -270,32 +268,33 @@ export class WebGPUEngine {
       fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         let x = in.world_pos.x;
         let z = in.world_pos.z;
-        
-        // Local coordinates within the 1x1 tile [-0.5, 0.5]
-        let p = fract(vec2<f32>(x + 0.5, z + 0.5)) - 0.5;
-        
-        // Analytical Anti-Aliasing
         let fw = fwidth(in.world_pos.xz);
-        let edge = max(fw.x, fw.y) * 1.5 + 0.001; 
-        
-        // Define the white tile area
-        let size = 0.485;
-        let distArr = abs(p) - size;
-        let dist = max(distArr.x, distArr.y);
-        
-        // Smooth mask
-        let mask = 1.0 - smoothstep(-edge, edge, dist);
-        
-        // Colors
-        let bgColor = vec4<f32>(0.898, 0.918, 0.945, 1.0); // Space Grey
-        let tileColor = vec4<f32>(1.0, 1.0, 1.0, 1.0);     // White
-        
-        // Fade out grid lines at extreme distance to avoid Moire/noise
         let pixelSize = max(fw.x, fw.y);
-        let gridFade = 1.0 - smoothstep(0.12, 0.45, pixelSize);
+
+        // Grid Colors
+        let bgColor = vec4<f32>(0.898, 0.918, 0.945, 1.0);
+        let tileColor = vec4<f32>(1.0, 1.0, 1.0, 1.0);
         
-        // At a distance, the grid should dissolve into the background color smoothly
-        return mix(bgColor, tileColor, mask * gridFade);
+        // Level 0: 1x1 Units
+        let p0 = fract(vec2<f32>(x + 0.5, z + 0.5)) - 0.5;
+        let edge0 = pixelSize * 1.5 + 0.001;
+        let mask0 = 1.0 - smoothstep(-edge0, edge0, max(abs(p0.x), abs(p0.y)) - 0.485);
+        let fade0 = 1.0 - smoothstep(0.1, 0.4, pixelSize);
+
+        // Level 1: 10x10 Units
+        let p1 = fract(vec2<f32>(x / 10.0 + 0.5, z / 10.0 + 0.5)) - 0.5;
+        let edge1 = (pixelSize / 10.0) * 1.5 + 0.001;
+        let mask1 = 1.0 - smoothstep(-edge1, edge1, max(abs(p1.x), abs(p1.y)) - 0.495);
+        let fade1 = (1.0 - smoothstep(1.0, 4.0, pixelSize)) * (smoothstep(0.1, 0.4, pixelSize));
+
+        // Level 2: 100x100 Units
+        let p2 = fract(vec2<f32>(x / 100.0 + 0.5, z / 100.0 + 0.5)) - 0.5;
+        let edge2 = (pixelSize / 100.0) * 1.5 + 0.001;
+        let mask2 = 1.0 - smoothstep(-edge2, edge2, max(abs(p2.x), abs(p2.y)) - 0.498);
+        let fade2 = (1.0 - smoothstep(10.0, 40.0, pixelSize)) * (smoothstep(1.0, 4.0, pixelSize));
+
+        let finalMask = clamp(mask0 * fade0 + mask1 * fade1 + mask2 * fade2, 0.0, 1.0);
+        return mix(bgColor, tileColor, finalMask);
       }
     `;
 
@@ -392,7 +391,7 @@ export class WebGPUEngine {
 
     // Create Grid Buffer (Huge Quad)
     const s = 10000.0;
-    const y = 0.0; // Perfect alignment with clicking plane
+    const y = 0.0;
     const gridData = new Float32Array([-s, y, -s, s, y, -s, -s, y, s, -s, y, s, s, y, -s, s, y, s]);
     this.gridVertexBuffer = this.createBuffer(gridData, GPUBufferUsage.VERTEX);
 
@@ -452,12 +451,10 @@ export class WebGPUEngine {
       ? `${Math.floor(bounds.x)},${Math.floor(bounds.y)},${nodes.length}`
       : 'all';
 
-    // Fast property checksum of all nodes to detect color/state changes
     let propSum = 0;
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
       if (n.floorColor) {
-        // Checksum based on color string
         propSum =
           (propSum +
             n.floorColor.charCodeAt(1) +
@@ -474,7 +471,6 @@ export class WebGPUEngine {
   private generateFloorInstances(nodes: Node[], selectedId: string | null): Float32Array {
     const count = nodes.length;
 
-    // Reuse or create the persistent Float32Array
     if (!this.cachedInstanceData || this.cachedInstanceData.length !== this.maxInstances * 8) {
       this.cachedInstanceData = new Float32Array(this.maxInstances * 8);
     }
@@ -488,7 +484,6 @@ export class WebGPUEngine {
         const isSelected = n.id === selectedId;
         const color = n.floorColor ? this.parseHexColor(n.floorColor) : [1.0, 1.0, 1.0, 1.0];
 
-        // Note: y is 0 for tiles. n.position.y is Z in 3D world.
         this.cachedInstanceData[offset++] = n.position.x;
         this.cachedInstanceData[offset++] = 0;
         this.cachedInstanceData[offset++] = n.position.y;
@@ -502,49 +497,32 @@ export class WebGPUEngine {
       if (offset / 8 >= this.maxInstances) break;
     }
 
-    // Return a view of the reused buffer to avoid copies
     return this.cachedInstanceData.subarray(0, offset);
   }
 
   render(nodes: Node[], selectedId: string | null): boolean {
     if (!this.device || !this.pipeline || !this.gridPipeline || !this.initialized) return false;
 
-    // ==================== PERFORMANCE MONITORING ====================
     this.frameController.recordFrame();
-
-    // Note: We avoid skipping frames (shouldRenderFrame) in the editor
-    // to prevent blank-frame flickering in WebGPU.
-    // Quality settings are still used for MSAA and other optimizations.
-
-    // Get current quality settings
     const quality = this.frameController.getQualitySettings();
 
-    // Check if we need to rebuild pipelines for new MSAA level
     if (quality.msaaSamples !== this.sampleCount) {
       this.sampleCount = quality.msaaSamples;
-      this.dynamicSampleCount = quality.msaaSamples;
 
-      // Destroy old MSAA dependant textures
       if (this.depthTexture) this.depthTexture.destroy();
       if (this.multisampledTexture) this.multisampledTexture.destroy();
       this.depthTexture = null;
       this.multisampledTexture = null;
 
-      // Rebuild pipelines and bind groups for new sample count
       this.setupPipeline();
       this.setupGridPipeline();
       this.createBuffers();
-
-      console.log(`[WebGPUEngine] Pipelines rebuilt for MSAA x${this.sampleCount}`);
-      this.lastNodesDataHash = ''; // CRITICAL: Reset hash to force re-uploading data to new buffers
+      this.lastNodesDataHash = '';
     }
 
     this.updateTextures();
 
-    // ==================== FRUSTUM CULLING (STABLE) ====================
-    // Quantize bound logic but keep it reactive to current view
-    let rawBounds = this.getVisibleBounds();
-    let bounds = rawBounds;
+    let bounds = this.getVisibleBounds();
     if (bounds) {
       bounds.x = Math.floor(bounds.x / 10) * 10;
       bounds.y = Math.floor(bounds.y / 10) * 10;
@@ -566,38 +544,30 @@ export class WebGPUEngine {
         })
       : nodes.filter((n) => n.active || (n.floorColor && n.floorColor.toLowerCase() !== '#ffffff'));
 
-    const maxNodesGPU = this.maxInstances;
     const limitedNodes =
-      visibleNodes.length > maxNodesGPU ? visibleNodes.slice(0, maxNodesGPU) : visibleNodes;
-
-    // DIRTY TRACKING: Only re-upload if nodes data actually changed
-    // This saves massive CPU time during camera movements
+      visibleNodes.length > this.maxInstances
+        ? visibleNodes.slice(0, this.maxInstances)
+        : visibleNodes;
     const currentHash = this.generateNodesDataHash(limitedNodes, selectedId, bounds);
     let instanceCount = this.lastRenderStats.instanceCount;
 
     if (currentHash !== this.lastNodesDataHash) {
       this.lastNodesDataHash = currentHash;
-
-      // 1. Generate sparse instances for colored tiles
       const instanceData = this.generateFloorInstances(limitedNodes, selectedId);
       this.device.queue.writeBuffer(
         this.floorInstanceBuffer,
         0,
-        instanceData.buffer as any,
+        instanceData.buffer,
         instanceData.byteOffset,
         instanceData.byteLength,
       );
       instanceCount = instanceData.length / 8;
-
-      // Update render stats (only on write)
       this.lastRenderStats.instanceCount = instanceCount;
       this.lastRenderStats.visibleNodes = limitedNodes.length;
       this.lastRenderStats.culledNodes = nodes.length - limitedNodes.length;
     }
 
     const commandEncoder = this.device.createCommandEncoder();
-
-    // Configure color attachment based on multisampling
     const colorAttachment: GPURenderPassColorAttachment = {
       view:
         this.sampleCount > 1
@@ -622,13 +592,11 @@ export class WebGPUEngine {
       },
     });
 
-    // 2. Draw Infinite Grid (Background)
     passEncoder.setPipeline(this.gridPipeline);
     passEncoder.setBindGroup(0, this.gridBindGroup);
     passEncoder.setVertexBuffer(0, this.gridVertexBuffer);
     passEncoder.draw(6, 1);
 
-    // 3. Draw Sparse Tiles (Foreground)
     if (instanceCount > 0) {
       passEncoder.setPipeline(this.pipeline);
       passEncoder.setBindGroup(0, this.uniformBindGroup);
@@ -640,65 +608,40 @@ export class WebGPUEngine {
     passEncoder.end();
     this.device.queue.submit([commandEncoder.finish()]);
 
-    return true; // Frame rendered
+    return true;
   }
 
-  // ==================== PERFORMANCE MONITORING ====================
-  /**
-   * Get current FPS
-   */
   getFps(): number {
     return this.frameController.getFps();
   }
 
-  /**
-   * Get quality level string
-   */
   getQualityLevel(): string {
     return this.frameController.getQualityLevel();
   }
 
-  /**
-   * Get render statistics
-   */
-  getRenderStats(): typeof this.lastRenderStats {
+  getRenderStats() {
     return { ...this.lastRenderStats };
   }
 
-  /**
-   * Clear the projection cache manually
-   */
   clearProjectionCache(): void {
     this.projectionCache.clear();
     this.lastRenderStats.cachedProjections = 0;
   }
 
-  /**
-   * Force a specific quality level (user override)
-   */
   setQualityLevel(level: 'ultra' | 'high' | 'medium' | 'low' | 'potato'): void {
     this.frameController.forceQualityLevel(level);
   }
 
-  /**
-   * Update camera state hash for cache invalidation
-   */
   private updateCameraStateHash(): string {
     const vp = this.camera.getViewProjectionMatrix();
-    // High precision hash of matrix components that change during tilt/pan/zoom
-    // We use more components and higher precision to avoid floating point jitter artifacts
     return `${vp[0].toFixed(8)}_${vp[5].toFixed(8)}_${vp[12].toFixed(5)}_${vp[15].toFixed(5)}`;
   }
 
-  /**
-   * Cached world to screen projection
-   */
   worldToScreenCached(
     worldX: number,
     worldY: number,
     worldZ: number,
   ): { x: number; y: number; z: number } | null {
-    // Check if camera moved - invalidate cache
     const currentHash = this.updateCameraStateHash();
     if (currentHash !== this.cameraStateHash) {
       this.cameraStateHash = currentHash;
@@ -706,7 +649,6 @@ export class WebGPUEngine {
       this.lastRenderStats.cachedProjections = 0;
     }
 
-    // Check cache
     const key = `${worldX.toFixed(2)}_${worldY.toFixed(2)}_${worldZ.toFixed(2)}`;
     const cached = this.projectionCache.get(key);
     if (cached !== undefined) {
@@ -714,49 +656,34 @@ export class WebGPUEngine {
       return cached;
     }
 
-    // Calculate and cache
     const result = this.worldToScreen(worldX, worldY, worldZ);
     this.projectionCache.set(key, result);
     return result;
   }
 
-  // Method to project 3D world position to 2D screen position
   worldToScreen(
     worldX: number,
     worldY: number,
     worldZ: number,
   ): { x: number; y: number; z: number } | null {
     const vp = this.camera.getViewProjectionMatrix();
-
-    // Transform world position to clip space
     const clipX = vp[0] * worldX + vp[4] * worldY + vp[8] * worldZ + vp[12];
     const clipY = vp[1] * worldX + vp[5] * worldY + vp[9] * worldZ + vp[13];
     const clipZ = vp[2] * worldX + vp[6] * worldY + vp[10] * worldZ + vp[14];
     const clipW = vp[3] * worldX + vp[7] * worldY + vp[11] * worldZ + vp[15];
 
-    if (clipW === 0 || clipZ < 0) return null; // Behind camera
-
-    // Perspective divide
+    if (clipW === 0 || clipZ < 0) return null;
     const ndcX = clipX / clipW;
     const ndcY = clipY / clipW;
 
-    // Frustum Culling
-    // Check if the point is significantly outside the viewport
-    // Using a margin of 1.2 to avoid objects popping in/out at edges
     if (ndcX < -1.2 || ndcX > 1.2 || ndcY < -1.2 || ndcY > 1.2) return null;
-
-    // Convert to screen coordinates
     if (!this.context) return null;
+
     const width = this.context.canvas.width;
     const height = this.context.canvas.height;
-
-    const screenX = (ndcX + 1) * 0.5 * width;
-    const screenY = (1 - ndcY) * 0.5 * height;
-
-    return { x: screenX, y: screenY, z: clipW };
+    return { x: (ndcX + 1) * 0.5 * width, y: (1 - ndcY) * 0.5 * height, z: clipW };
   }
 
-  // Helper for Frustum Culling / Spatial Partitioning
   getVisibleBounds(): { x: number; y: number; width: number; height: number } | null {
     if (!this.context) return null;
     const width = this.context.canvas.width;
@@ -770,12 +697,10 @@ export class WebGPUEngine {
     ].filter((c): c is { x: number; z: number } => c !== null);
 
     if (corners.length === 0) return null;
-
     const minX = Math.min(...corners.map((c) => c.x)) - 15;
     const maxX = Math.max(...corners.map((c) => c.x)) + 15;
     const minZ = Math.min(...corners.map((c) => c.z)) - 15;
     const maxZ = Math.max(...corners.map((c) => c.z)) + 15;
-
     return { x: minX, y: minZ, width: maxX - minX, height: maxZ - minZ };
   }
 
@@ -794,8 +719,5 @@ export class WebGPUEngine {
     this.floorInstanceBuffer?.destroy();
     this.gridVertexBuffer?.destroy();
     this.uniformBuffer?.destroy();
-    // Device usually doesn't need explicit destroy if we want to reuse it,
-    // but since this engine instance is tied to the component, we can let the GC handle the JS object,
-    // and just ensure GPU resources are released.
   }
 }
