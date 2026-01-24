@@ -155,10 +155,10 @@ export class WebGPUEngine {
         let p = abs(vec2<f32>(fract(x + 0.5) - 0.5, fract(z + 0.5) - 0.5));
         
         let fw = fwidth(in.world_pos.xz);
-        // Sharper edges: reduce multiplier from 2.0 to 1.0
-        let edge = clamp(max(fw.x, fw.y) * 1.0, 0.001, 0.05);
+        // Ultra-sharp edges: multiplier reduced to 0.5 for maximum definition
+        let edge = clamp(max(fw.x, fw.y) * 0.5, 0.0005, 0.02);
         
-        let size = 0.48;
+        let size = 0.485;
         let dist = max(p.x, p.y) - size;
         
         let is_inside = 1.0 - smoothstep(-edge, edge, dist);
@@ -237,7 +237,7 @@ export class WebGPUEngine {
       },
       multisample: {
         count: this.sampleCount,
-        alphaToCoverageEnabled: true,
+        alphaToCoverageEnabled: this.sampleCount > 1, // Fix: Must be false if sampleCount is 1
       },
     });
   }
@@ -433,12 +433,17 @@ export class WebGPUEngine {
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
         sampleCount: this.sampleCount,
       });
-      this.multisampledTexture = this.device.createTexture({
-        size: [width, height],
-        format: this.format,
-        usage: GPUTextureUsage.RENDER_ATTACHMENT,
-        sampleCount: this.sampleCount,
-      });
+
+      if (this.sampleCount > 1) {
+        this.multisampledTexture = this.device.createTexture({
+          size: [width, height],
+          format: this.format,
+          usage: GPUTextureUsage.RENDER_ATTACHMENT,
+          sampleCount: this.sampleCount,
+        });
+      } else {
+        this.multisampledTexture = null;
+      }
     }
   }
 
@@ -447,19 +452,27 @@ export class WebGPUEngine {
     selectedId: string | null,
     bounds: any,
   ): string {
-    // We MUST include bounds in the hash because they determine which nodes are in 'nodes' array.
-    // If we move the camera and the culling set changes, the hash MUST change.
-    const boundsPart = bounds ? `${bounds.x},${bounds.y},${bounds.width},${bounds.height}` : 'all';
+    const boundsPart = bounds
+      ? `${Math.floor(bounds.x)},${Math.floor(bounds.y)},${nodes.length}`
+      : 'all';
 
-    const sampleSize = Math.min(nodes.length, 5000);
-    let hash = `v7_${nodes.length}_${selectedId || ''}_${boundsPart}`;
-
-    for (let i = 0; i < sampleSize; i += 2) {
-      // Sample every 2 nodes for performance if many
+    // Fast property checksum of all nodes to detect color/state changes
+    let propSum = 0;
+    for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
-      hash += `|${n.id.slice(-3)}@${n.position.x},${n.position.y}:${n.floorColor || ''}`;
+      if (n.floorColor) {
+        // Checksum based on color string
+        propSum =
+          (propSum +
+            n.floorColor.charCodeAt(1) +
+            n.floorColor.charCodeAt(3) +
+            n.floorColor.charCodeAt(5)) |
+          0;
+      }
+      propSum = (propSum + (n.active ? 1 : 0)) | 0;
     }
-    return hash;
+
+    return `v11_${selectedId || ''}_${boundsPart}_${propSum}`;
   }
 
   private generateFloorInstances(nodes: FossFlowNode[], selectedId: string | null): Float32Array {
@@ -527,6 +540,7 @@ export class WebGPUEngine {
       this.createBuffers();
 
       console.log(`[WebGPUEngine] Pipelines rebuilt for MSAA x${this.sampleCount}`);
+      this.lastNodesDataHash = ''; // CRITICAL: Reset hash to force re-uploading data to new buffers
     }
 
     this.updateTextures();
@@ -586,16 +600,24 @@ export class WebGPUEngine {
     }
 
     const commandEncoder = this.device.createCommandEncoder();
+
+    // Configure color attachment based on multisampling
+    const colorAttachment: GPURenderPassColorAttachment = {
+      view:
+        this.sampleCount > 1
+          ? this.multisampledTexture!.createView()
+          : this.context.getCurrentTexture().createView(),
+      clearValue: this.CLEAR_COLOR,
+      loadOp: 'clear',
+      storeOp: this.sampleCount > 1 ? 'discard' : 'store',
+    };
+
+    if (this.sampleCount > 1) {
+      colorAttachment.resolveTarget = this.context.getCurrentTexture().createView();
+    }
+
     const passEncoder = commandEncoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: this.multisampledTexture!.createView(),
-          resolveTarget: this.context.getCurrentTexture().createView(),
-          clearValue: this.CLEAR_COLOR,
-          loadOp: 'clear',
-          storeOp: 'discard',
-        },
-      ],
+      colorAttachments: [colorAttachment],
       depthStencilAttachment: {
         view: this.depthTexture!.createView(),
         depthClearValue: 1.0,

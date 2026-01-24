@@ -73,14 +73,33 @@ export class AdaptiveFrameController {
   }
 
   /**
-   * Decide if we should skip this frame to save CPU/GPU
-   * Updated: Disabled render skipping to avoid flickering,
-   * now only used for logic throttling.
+   * In WebGPU, skipping a rendering frame is dangerous as it leads to
+   * black/blank frames in the swap-chain.
+   *
+   * DECISION: We always return true for drawing, but heavy system logic
+   * should check shouldUpdateHeavyLogic() instead.
    */
   shouldRenderFrame(): boolean {
-    // We always render at full speed to avoid flickering
-    // Throttling is now handled at the logic/signal level
     return true;
+  }
+
+  /**
+   * Decide if heavy background logic (like spatial partitioning or pathfinding)
+   * should run this frame based on the hardware budget.
+   */
+  shouldUpdateHeavyLogic(): boolean {
+    if (this.qualityLevel === 'ultra' || this.qualityLevel === 'high') {
+      return true;
+    }
+
+    this.frameSkipCounter++;
+    const skipThreshold = this.qualityLevel === 'medium' ? 2 : this.qualityLevel === 'low' ? 3 : 5;
+
+    if (this.frameSkipCounter >= skipThreshold) {
+      this.frameSkipCounter = 0;
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -111,22 +130,34 @@ export class AdaptiveFrameController {
     return this.qualityLevel;
   }
 
+  private lastQualityChangeTime = 0;
+  private readonly qualityChangeCooldown = 2000; // 2 seconds minimum between automatic quality changes
+
   private updateQualityLevel(): void {
+    const now = performance.now();
+    if (now - this.lastQualityChangeTime < this.qualityChangeCooldown) return;
+
     const avgFrameTime = this.getAverageFrameTime();
 
     // Hysteresis to prevent flickering between levels
-    const hysteresis = 2; // ms
+    const hysteresis = 5; // increased to 5ms for more stability
 
+    let newLevel = this.qualityLevel;
     if (avgFrameTime < this.thresholds.ultra - hysteresis) {
-      this.qualityLevel = 'ultra';
+      newLevel = 'ultra';
     } else if (avgFrameTime < this.thresholds.high - hysteresis) {
-      this.qualityLevel = 'high';
+      newLevel = 'high';
     } else if (avgFrameTime < this.thresholds.medium - hysteresis) {
-      this.qualityLevel = 'medium';
+      newLevel = 'medium';
     } else if (avgFrameTime < this.thresholds.low - hysteresis) {
-      this.qualityLevel = 'low';
+      newLevel = 'low';
     } else {
-      this.qualityLevel = 'potato';
+      newLevel = 'potato';
+    }
+
+    if (newLevel !== this.qualityLevel) {
+      this.qualityLevel = newLevel;
+      this.lastQualityChangeTime = now;
     }
   }
 
@@ -198,7 +229,7 @@ export const QUALITY_PRESETS: Record<string, QualitySettings> = {
     enableShadows: false,
     enableAntialiasing: true,
     enableAnimations: true,
-    msaaSamples: 2,
+    msaaSamples: 4, // Changed from 2 to 4 (as 2 is often unsupported)
     textureQuality: 'medium',
     useSimplifiedDOM: false,
     enableCSSTransitions: true,
@@ -211,7 +242,7 @@ export const QUALITY_PRESETS: Record<string, QualitySettings> = {
     enableShadows: false,
     enableAntialiasing: false,
     enableAnimations: false,
-    msaaSamples: 1,
+    msaaSamples: 1, // MSAA Off
     textureQuality: 'low',
     useSimplifiedDOM: true,
     enableCSSTransitions: false,
