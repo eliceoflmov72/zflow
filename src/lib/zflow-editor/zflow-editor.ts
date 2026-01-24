@@ -26,7 +26,7 @@ import { StorageService } from '../services/storage.service';
 import { ConnectionService } from '../services/connection.service';
 import { WebGPUEngine } from '../webgpu/engine';
 import { FossFlowNode, FossFlowConnection } from '../models/fossflow.types';
-import { ModalComponent } from '../components/ui/modal/modal';
+import { ModalComponent } from '../components/ui/modal/modal.component';
 import { BottomToolbar } from '../components/toolbar/bottom-toolbar/bottom-toolbar';
 import { TopToolbar } from '../components/toolbar/top-toolbar/top-toolbar';
 import { SelectionSidebar } from '../components/sidebar/selection-sidebar/selection-sidebar';
@@ -115,6 +115,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   });
   isFullscreen = signal(false);
   showClearConfirm = signal(false);
+  showLimitModal = signal(false);
   frameCounter = signal(0);
 
   selectedNode = computed(() => {
@@ -154,17 +155,16 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   // Computed signal for grid size based on rotation
   rotatedGridSize = computed(() => {
     const { width, height } = this.gridService.gridSize();
-    // For 45 and 225 degrees, width and height are effectively swapped for isometric projection
-    // This logic might need to be more robust for other angles, but for 45-degree increments,
-    // it's often a simple swap or direct use.
-    // Assuming the grid is square or we want to maintain aspect ratio visually.
-    // For a simple isometric view, the effective "width" and "height" might not change,
-    // but the visual representation on screen might.
-    // This is a placeholder and might need more precise calculation based on actual isometric projection.
-    if (this.currentRotationLabel() === '45°' || this.currentRotationLabel() === '225°') {
-      return { width, height };
-    }
-    return { width: height, height: width }; // logic might vary but keeping simple
+    const rad = (this.targetRotation() * Math.PI) / 180;
+    const cos = Math.abs(Math.cos(rad));
+    const sin = Math.abs(Math.sin(rad));
+
+    // Calculate the Axis-Aligned Bounding Box (AABB) of the grid area on the XZ plane
+    // after rotation. This gives the logical 'footprint' of the editor area.
+    return {
+      width: Math.round(width * cos + height * sin),
+      height: Math.round(width * sin + height * cos),
+    };
   });
 
   // Computed signal for connections
@@ -181,8 +181,10 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     const fovFactor = 1.0 / Math.tan(fovRad / 2);
 
     return conns
-      .map((conn) => this.projectConnection(conn, nodeMap, dpr, fovFactor, bounds))
-      .filter((c): c is NonNullable<typeof c> => c !== null);
+      .map((conn: FossFlowConnection) =>
+        this.projectConnection(conn, nodeMap, dpr, fovFactor, bounds),
+      )
+      .filter((c: any): c is NonNullable<any> => c !== null);
   });
 
   private projectConnection(
@@ -476,6 +478,14 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
       const nodes = this.gridService.nodes();
       if (nodes.length > 0) {
         this.nodesChange.emit(nodes);
+      }
+    });
+
+    effect(() => {
+      if (this.gridService.limitReached()) {
+        this.showLimitModal.set(true);
+        // Reset the service signal so it can trigger again
+        this.gridService.limitReached.set(false);
       }
     });
   }
@@ -1017,6 +1027,13 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     const minZ = Math.min(start.z, end.z);
     const maxZ = Math.max(start.z, end.z);
 
+    const coords = [];
+    for (let x = minX; x <= maxX; x++) {
+      for (let z = minZ; z <= maxZ; z++) {
+        coords.push({ x, y: z });
+      }
+    }
+
     const settings = {
       objectEnabled: this.paintObjectEnabled(),
       floorEnabled: this.paintFloorEnabled(),
@@ -1025,18 +1042,8 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
       floorColor: this.brushFloorColor(),
     };
 
-    let batchChanged = false;
-
-    for (let x = minX; x <= maxX; x++) {
-      for (let z = minZ; z <= maxZ; z++) {
-        // We use paintNode for single consistency, but GridService could have a batchPaint
-        // For simplicity and to avoid spaghetti here, we just use the service logic
-        const changed = this.gridService.paintNode(x, z, settings);
-        if (changed) batchChanged = true;
-      }
-    }
-
-    if (batchChanged) {
+    const changed = this.gridService.paintBatch(coords, settings);
+    if (changed) {
       this.pushState();
     }
   }

@@ -275,5 +275,16 @@
       (confirmAction)="confirmClear()"
       (closeAction)="showClearConfirm.set(false)"
     />
+
+    <!-- LIMIT REACHED MODAL -->
+    <modal
+      [isOpen]="showLimitModal()"
+      title="Límite alcanzado"
+      description="Has alcanzado el límite máximo de 60 objetos o suelos editados. Elimina algunos elementos para poder añadir más."
+      confirmButtonText="Entendido"
+      confirmButtonType="primary"
+      (confirmAction)="showLimitModal.set(false)"
+      (closeAction)="showLimitModal.set(false)"
+    />
   </div>
 </div>

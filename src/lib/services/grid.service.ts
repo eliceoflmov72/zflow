@@ -18,6 +18,7 @@ export class GridService {
   nodes = signal<FossFlowNode[]>([]);
   connections = signal<FossFlowConnection[]>([]);
   gridSize = signal({ width: 40, height: 40 });
+  limitReached = signal(false);
 
   // Map for O(1) access by coordinate "x,y"
   private nodeCoordMap = new Map<string, FossFlowNode>();
@@ -49,7 +50,7 @@ export class GridService {
       if (n.floorColor) colors.add(n.floorColor.toLowerCase());
     });
 
-    connections.forEach((c) => {
+    connections.forEach((c: FossFlowConnection) => {
       if (c.color) colors.add(c.color.toLowerCase());
     });
 
@@ -192,111 +193,170 @@ export class GridService {
       floorColor?: string;
     },
   ): boolean {
-    const node = this.getNodeAt(x, y);
-    if (!node) return false;
-
-    const updates: Partial<FossFlowNode> = {};
-    let changed = false;
-
-    // Check if this would exceed the modification limit
-    const isNodeCurrentlyModified =
-      node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
-    const willBeModified =
-      settings.objectEnabled ||
-      (settings.floorEnabled && (settings.floorColor || '#ffffff').toLowerCase() !== '#ffffff');
-
-    if (!isNodeCurrentlyModified && willBeModified) {
-      if (this.modifiedNodesCount() >= 60) {
-        console.warn('Cannot edit node: Limit of 60 modified nodes reached');
-        return false;
-      }
-    }
-
-    if (settings.objectEnabled) {
-      if (!node.active || node.shape3D !== settings.shape || node.color !== settings.objectColor) {
-        updates.active = true;
-        updates.shape3D = settings.shape;
-        updates.color = settings.objectColor;
-        changed = true;
-      }
-    }
-
-    if (settings.floorEnabled) {
-      if (node.floorColor !== settings.floorColor) {
-        updates.floorColor = settings.floorColor;
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      this.updateNode(node.id, updates);
-    }
-    return changed;
+    return this.paintBatch([{ x, y }], settings);
   }
 
   /**
    * Update a single node
    */
   updateNode(id: string, updates: Partial<FossFlowNode>) {
-    const node = this.nodes().find((n) => n.id === id);
-    if (!node) return;
-
-    // Limit check for manual updates (from sidebars)
-    const isCurrentlyModified =
-      node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff');
-    const willBeActive = updates.active !== undefined ? updates.active : node.active;
-    const willHavePaintedFloor =
-      updates.floorColor !== undefined
-        ? updates.floorColor.toLowerCase() !== '#ffffff'
-        : node.floorColor && node.floorColor.toLowerCase() !== '#ffffff';
-
-    const willBeModified = willBeActive || willHavePaintedFloor;
-
-    if (!isCurrentlyModified && willBeModified && this.modifiedNodesCount() >= 60) {
-      console.warn('Cannot update node: Limit of 60 modified nodes reached');
-      return;
-    }
-
-    // If we are activating a node, ensure it doesn't collide with a connection
-    if (updates.active === true) {
-      // Only block if it's currently INACTIVE and the tile is occupied
-      if (
-        !node.active &&
-        this.connectionService.isTileOccupiedByConnection(
-          node.position.x,
-          node.position.y,
-          this.connections(),
-          this.nodes(),
-        )
-      ) {
-        console.warn('Cannot place object: Tile occupied by a connection');
-        return;
-      }
-    }
-
-    this.nodes.update((nodes) => nodes.map((n) => (n.id === id ? { ...n, ...updates } : n)));
-    // State is saved by the effect that watches this.nodes()
-    this.storageService.saveState(this.nodes(), this.connections());
+    this.updateManyNodes([{ id, changes: updates }]);
   }
 
   /**
-   * Update multiple nodes in batch
+   * Update multiple nodes in batch with strict limit enforcement
    */
   updateManyNodes(updates: { id: string; changes: Partial<FossFlowNode> }[]) {
     if (updates.length === 0) return;
 
-    const updatesMap = new Map(updates.map((u) => [u.id, u.changes]));
+    const currentNodes = this.nodes();
+    let currentLimitCount = this.modifiedNodesCount();
+    const finalUpdates: { id: string; changes: Partial<FossFlowNode> }[] = [];
 
+    for (const update of updates) {
+      const node = currentNodes.find((n) => n.id === update.id);
+      if (!node) continue;
+
+      const result = this.checkLimitAndCollision(node, update.changes, currentLimitCount);
+      if (result.allowed) {
+        currentLimitCount = result.newLimitCount;
+        finalUpdates.push(update);
+      }
+    }
+
+    if (finalUpdates.length === 0) return;
+
+    const updatesMap = new Map(finalUpdates.map((u) => [u.id, u.changes]));
     this.nodes.update((nodes) =>
       nodes.map((n) => {
         const change = updatesMap.get(n.id);
-        if (change) {
-          return { ...n, ...change };
-        }
-        return n;
+        return change ? { ...n, ...change } : n;
       }),
     );
     this.storageService.saveState(this.nodes(), this.connections());
+  }
+
+  /**
+   * Efficiently paint multiple nodes at once
+   */
+  paintBatch(
+    coords: { x: number; y: number }[],
+    settings: {
+      objectEnabled: boolean;
+      floorEnabled: boolean;
+      shape?: string;
+      objectColor?: string;
+      floorColor?: string;
+    },
+  ): boolean {
+    const updates: { id: string; changes: Partial<FossFlowNode> }[] = [];
+
+    for (const { x, y } of coords) {
+      const node = this.getNodeAt(x, y);
+      if (!node) continue;
+
+      const changes: Partial<FossFlowNode> = {};
+      let changed = false;
+
+      if (settings.objectEnabled) {
+        if (
+          !node.active ||
+          node.shape3D !== settings.shape ||
+          node.color !== settings.objectColor
+        ) {
+          changes.active = true;
+          changes.shape3D = settings.shape;
+          changes.color = settings.objectColor;
+          changed = true;
+        }
+      }
+
+      if (settings.floorEnabled) {
+        if (node.floorColor !== settings.floorColor) {
+          changes.floorColor = settings.floorColor;
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        // Collision check for objects
+        if (changes.active === true && !node.active) {
+          if (this.isTileOccupied(x, y)) {
+            continue; // Skip this one, tile is blocked
+          }
+        }
+        updates.push({ id: node.id, changes });
+      }
+    }
+
+    if (updates.length > 0) {
+      this.updateManyNodes(updates);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Internal limit check for updateManyNodes
+   */
+  private checkLimitAndCollision(
+    node: FossFlowNode,
+    changes: Partial<FossFlowNode>,
+    currentLimitCount: number,
+  ): { allowed: boolean; newLimitCount: number } {
+    const wasModified = this.isModified(node);
+    const willBeModified = this.willBeModified(node, changes);
+
+    // Collision check for objects
+    if (changes.active === true && !node.active) {
+      if (this.isTileOccupied(node.position.x, node.position.y)) {
+        console.warn('Cannot place object: Tile occupied by a connection');
+        return { allowed: false, newLimitCount: currentLimitCount };
+      }
+    }
+
+    let newLimitCount = currentLimitCount;
+    if (!wasModified && willBeModified) {
+      if (currentLimitCount < 60) {
+        newLimitCount++;
+        return { allowed: true, newLimitCount };
+      } else {
+        console.warn('Limit of 60 modified nodes reached');
+        this.limitReached.set(true);
+        return { allowed: false, newLimitCount };
+      }
+    } else if (wasModified && !willBeModified) {
+      newLimitCount--;
+    }
+
+    return { allowed: true, newLimitCount };
+  }
+
+  private isModified(node: FossFlowNode): boolean {
+    return !!(node.active || (node.floorColor && node.floorColor.toLowerCase() !== '#ffffff'));
+  }
+
+  private willBeModified(node: FossFlowNode, updates: Partial<FossFlowNode>): boolean {
+    const active = updates.active !== undefined ? updates.active : node.active;
+    const floorColor = updates.floorColor !== undefined ? updates.floorColor : node.floorColor;
+    return !!(active || (floorColor && floorColor.toLowerCase() !== '#ffffff'));
+  }
+
+  /**
+   * Centralized logic to check if a cell is occupied by an object or a connection
+   */
+  isTileOccupied(x: number, y: number): boolean {
+    // 1. Check if there is an active object at this tile
+    const node = this.getNodeAt(x, y);
+    if (node && node.active) return true;
+
+    // 2. Check if there is a connection path passing through this tile
+    return this.connectionService.isTileOccupiedByConnection(
+      x,
+      y,
+      this.connections(),
+      this.nodes(),
+    );
   }
 
   /**
@@ -332,8 +392,7 @@ export class GridService {
       return '';
     }
 
-    /* 
-    const existing = this.connections().some((c) => {
+    const existing = this.connections().some((c: FossFlowConnection) => {
       const same = c.fromId === fromId && c.toId === toId;
       const reverse = !directed && c.fromId === toId && c.toId === fromId;
       return same || reverse;
@@ -342,7 +401,6 @@ export class GridService {
       console.debug('[zflow][grid] addConnection blocked: duplicate connection', { fromId, toId });
       return '';
     }
-    */
 
     const nodes = this.nodes();
     const fromNode = nodes.find((n) => n.id === fromId);
@@ -365,7 +423,7 @@ export class GridService {
       const isAdjacent = dx <= 1 && dy <= 1;
 
       const uniquePoints = customPath
-        ? customPath.filter((p, i) => {
+        ? customPath.filter((p: { x: number; y: number }, i: number) => {
             if (i === 0) return true;
             return p.x !== customPath[i - 1].x || p.y !== customPath[i - 1].y;
           })
@@ -379,26 +437,29 @@ export class GridService {
       }
     }
 
-    /* 
     const fromDegree = this.connections().filter(
-      (c) => c.fromId === fromId || c.toId === fromId,
+      (c: FossFlowConnection) => c.fromId === fromId || c.toId === fromId,
     ).length;
-    const toDegree = this.connections().filter((c) => c.fromId === toId || c.toId === toId).length;
+    const toDegree = this.connections().filter(
+      (c: FossFlowConnection) => c.fromId === toId || c.toId === toId,
+    ).length;
+
     if (
-      (typeof fromNode.maxConnections === 'number' && fromDegree >= fromNode.maxConnections) ||
-      (typeof toNode.maxConnections === 'number' && toDegree >= toNode.maxConnections)
+      (fromNode &&
+        typeof fromNode.maxConnections === 'number' &&
+        fromDegree >= fromNode.maxConnections) ||
+      (toNode && typeof toNode.maxConnections === 'number' && toDegree >= toNode.maxConnections)
     ) {
       console.debug('[zflow][grid] addConnection blocked: maxConnections reached', {
         fromId,
         toId,
         fromDegree,
         toDegree,
-        fromMax: fromNode.maxConnections,
-        toMax: toNode.maxConnections,
+        fromMax: fromNode?.maxConnections,
+        toMax: toNode?.maxConnections,
       });
       return '';
     }
-    */
 
     const newConnection = this.connectionService.createConnection(
       fromId,
@@ -413,7 +474,7 @@ export class GridService {
       direction,
       true, // Always allow diagonals
     );
-    this.connections.update((conns) => [...conns, newConnection]);
+    this.connections.update((conns: FossFlowConnection[]) => [...conns, newConnection]);
     this.storageService.saveState(this.nodes(), this.connections());
     return newConnection.id;
   }
