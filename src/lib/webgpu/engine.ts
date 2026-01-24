@@ -113,7 +113,7 @@ export class WebGPUEngine {
     return true;
   }
 
-  private async setupPipeline() {
+  private setupPipeline() {
     const shaderCode = `
       struct Uniforms {
         viewProjectionMatrix: mat4x4<f32>,
@@ -155,8 +155,8 @@ export class WebGPUEngine {
         let p = abs(vec2<f32>(fract(x + 0.5) - 0.5, fract(z + 0.5) - 0.5));
         
         let fw = fwidth(in.world_pos.xz);
-        // Clamp edge to prevent shimmering during fast camera movements
-        let edge = clamp(max(fw.x, fw.y) * 2.0, 0.005, 0.05);
+        // Sharper edges: reduce multiplier from 2.0 to 1.0
+        let edge = clamp(max(fw.x, fw.y) * 1.0, 0.001, 0.05);
         
         let size = 0.48;
         let dist = max(p.x, p.y) - size;
@@ -511,11 +511,22 @@ export class WebGPUEngine {
     const quality = this.frameController.getQualitySettings();
 
     // Check if we need to rebuild pipelines for new MSAA level
-    if (quality.msaaSamples !== this.dynamicSampleCount) {
+    if (quality.msaaSamples !== this.sampleCount) {
+      this.sampleCount = quality.msaaSamples;
       this.dynamicSampleCount = quality.msaaSamples;
-      this.needsPipelineRebuild = true;
-      // Pipeline rebuild would happen here in a full implementation
-      // For now, we just note it for future optimization
+
+      // Destroy old MSAA dependant textures
+      if (this.depthTexture) this.depthTexture.destroy();
+      if (this.multisampledTexture) this.multisampledTexture.destroy();
+      this.depthTexture = null;
+      this.multisampledTexture = null;
+
+      // Rebuild pipelines and bind groups for new sample count
+      this.setupPipeline();
+      this.setupGridPipeline();
+      this.createBuffers();
+
+      console.log(`[WebGPUEngine] Pipelines rebuilt for MSAA x${this.sampleCount}`);
     }
 
     this.updateTextures();
