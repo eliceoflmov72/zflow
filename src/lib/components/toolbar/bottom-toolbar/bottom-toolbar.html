@@ -13,16 +13,16 @@
     ></div>
   </button>
   <div class="ff-divider-v"></div>
-  <button (click)="zoomOut.emit()" title="Alejar"><i class="pi pi-minus"></i></button>
+  <button (click)="zoomOut.emit()" title="Alejar">-</button>
   <span class="ff-zoom-label">{{ zoomLabel() }}%</span>
-  <button (click)="zoomIn.emit()" title="Acercar"><i class="pi pi-plus"></i></button>
+  <button (click)="zoomIn.emit()" title="Acercar">+</button>
   <div class="ff-divider-v"></div>
   <button
     (click)="toggleStats.emit()"
     [class.active]="showStats()"
     title="Mostrar Estadísticas de Rendimiento"
   >
-    <i class="pi pi-chart-line"></i>
+    FPS
   </button>
-  <button (click)="resetView.emit()" title="Ajustar Vista"><i class="pi pi-refresh"></i></button>
+  <button (click)="resetView.emit()" title="Ajustar Vista">R</button>
 </toolbar>
