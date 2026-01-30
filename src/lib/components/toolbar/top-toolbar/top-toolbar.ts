@@ -26,8 +26,8 @@ export class TopToolbar {
   }
 
   getFullscreenIcon() {
-    if (typeof document === 'undefined') return 'pi pi-window-maximize';
-    return this.isFullscreen() ? 'pi pi-window-minimize' : 'pi pi-window-maximize';
+    if (typeof document === 'undefined') return 'fullscreen.svg';
+    return this.isFullscreen() ? 'fullscreen-exit.svg' : 'fullscreen.svg';
   }
 
   toggleFullscreen() {

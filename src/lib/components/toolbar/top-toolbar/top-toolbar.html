@@ -67,6 +67,10 @@
   </button>
   <div class="ff-divider"></div>
   <button (click)="toggleFullscreen()" title="Pantalla Completa">
-    <i [class]="getFullscreenIcon()"></i>
+    <div
+      class="ff-icon"
+      [style.mask-image]="'url(/icons/' + getFullscreenIcon() + ')'"
+      [style.-webkit-mask-image]="'url(/icons/' + getFullscreenIcon() + ')'"
+    ></div>
   </button>
 </toolbar>

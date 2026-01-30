@@ -18,7 +18,10 @@ import { Tab } from '../ui/tabs/tab';
               (click)="selectShape.emit(null)"
               title="Sin Objeto"
             >
-              <i class="pi pi-ban"></i>
+              <div
+                class="ff-gallery-preview mask-preview"
+                style="mask-image: url(/icons/no-object.svg); -webkit-mask-image: url(/icons/no-object.svg);"
+              ></div>
             </div>
           }
           @for (svg of availableForms(); track svg) {
@@ -39,8 +42,19 @@ import { Tab } from '../ui/tabs/tab';
 
       <tab label="Imágenes" id="images">
         <div class="ff-object-gallery">
-          <!-- No clear button needed here if it's already in the first tab, but maybe consistent? -->
-          <!-- For now, assuming clear is global or primarily in Forms tab -->
+          @if (allowClear) {
+            <div
+              class="ff-gallery-item"
+              [class.active]="!currentShape && allowClear"
+              (click)="selectShape.emit(null)"
+              title="Sin Objeto"
+            >
+              <div
+                class="ff-gallery-preview mask-preview"
+                style="mask-image: url(/icons/no-object.svg); -webkit-mask-image: url(/icons/no-object.svg);"
+              ></div>
+            </div>
+          }
 
           @for (img of availableImages(); track img) {
             <div
