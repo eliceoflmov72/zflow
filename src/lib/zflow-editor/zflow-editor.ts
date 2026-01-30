@@ -30,7 +30,6 @@ import { ModalComponent } from '../components/ui/modal/modal.component';
 import { BottomToolbar } from '../components/toolbar/bottom-toolbar/bottom-toolbar';
 import { TopToolbar } from '../components/toolbar/top-toolbar/top-toolbar';
 import { SelectionSidebar } from '../components/sidebar/selection-sidebar/selection-sidebar';
-import { PaintSidebar } from '../components/sidebar/paint-sidebar/paint-sidebar';
 import { ConnectionSidebar } from '../components/sidebar/connection-sidebar/connection-sidebar';
 import { PerformanceMonitorComponent } from '../components/performance-monitor/performance-monitor';
 import { Logger } from '../utils/logger';
