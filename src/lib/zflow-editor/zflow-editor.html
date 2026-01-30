@@ -235,22 +235,6 @@
         (updateSelectedNodes)="updateSelectedNodes($event)"
         (deleteSelected)="deleteSelected()"
       />
-    } @else if (
-      !selectedNode() &&
-      !selectedConnection() &&
-      (editorMode() === 'paint' || editorMode() === 'paint-floor')
-    ) {
-      <!-- BRUSH SIDEBAR -->
-      <paint-sidebar
-        [paintTool]="paintTool"
-        [paintObjectEnabled]="paintObjectEnabled"
-        [paintFloorEnabled]="paintFloorEnabled"
-        [brushShape]="brushShape"
-        [brushObjectColor]="brushObjectColor"
-        [brushFloorColor]="brushFloorColor"
-        [availableSvgs]="availableSvgs"
-        [recentColors]="recentColors"
-      />
     }
 
     <!-- CONNECTION SIDEBAR -->

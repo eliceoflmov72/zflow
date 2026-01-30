@@ -45,7 +45,6 @@ import { Logger } from '../utils/logger';
     BottomToolbar,
     TopToolbar,
     SelectionSidebar,
-    PaintSidebar,
     ConnectionSidebar,
     PerformanceMonitorComponent,
   ],
@@ -68,19 +67,13 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   redoBound = () => this.redo();
 
   webGpuSupported = signal(true);
-  editorMode = signal<'select' | 'pan' | 'connect' | 'paint' | 'paint-floor'>('select');
-  paintTool = signal<'brush' | 'rectangle'>('rectangle');
+  editorMode = signal<'select' | 'pan' | 'connect'>('select');
   dragStartPoint = signal<{ x: number; z: number } | null>(null);
   dragEndPoint = signal<{ x: number; z: number } | null>(null);
 
   connectSourceId = signal<string | null>(null);
 
-  // Paint Brush State
-  paintObjectEnabled = signal(true);
-  paintFloorEnabled = signal(false);
-  brushShape = signal<string>('isometric-cube.svg');
-  brushObjectColor = signal<string>('#3b82f6');
-  brushFloorColor = signal<string>('#ffffff');
+  // Paint Brush State removed
   activePath = signal<{ x: number; y: number }[]>([]); // Current drawing path
   connectionStyle = signal<'straight' | 'rounded'>('straight');
   currentLineType = signal<'solid' | 'dashed'>('solid');
@@ -701,29 +694,6 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     this.animationFrameId = requestAnimationFrame(render);
   }
 
-  // Paint helper
-  private performPaintAt(clientX: number, clientY: number): Node | null {
-    const hit = this.getHitFromMouse(clientX, clientY);
-    if (!hit) return null;
-
-    const gx = Math.round(hit.x);
-    const gz = Math.round(hit.z);
-
-    if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
-      const changed = this.gridService.paintNode(gx, gz, {
-        objectEnabled: this.paintObjectEnabled(),
-        floorEnabled: this.paintFloorEnabled(),
-        shape: this.brushShape(),
-        objectColor: this.brushObjectColor(),
-        floorColor: this.brushFloorColor(),
-      });
-
-      if (changed) {
-        this.pushState();
-      }
-    }
-    return this.gridService.getNodeAt(gx, gz) || null;
-  }
 
   onClick(event: MouseEvent) {
     if (this.showClearConfirm()) return;
@@ -747,10 +717,6 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     if (this.editorMode() === 'select') {
       const isMulti = event.ctrlKey || event.metaKey || event.shiftKey;
       this.selectionService.selectNode(node?.id || null, isMulti);
-    } else if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
-      if (this.paintTool() === 'brush') {
-        this.performPaintAt(event.clientX, event.clientY);
-      }
     } else if (this.editorMode() === 'connect') {
       this.handleConnectClick(gx, gz, node || null);
     }
@@ -840,23 +806,6 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
       (event.button === 0 && event.shiftKey && this.editorMode() !== 'select')
     ) {
       this.isDragging = true;
-    } else if (
-      (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') &&
-      event.button === 0
-    ) {
-      this.isDragging = true;
-      if (this.paintTool() === 'brush') {
-        // Trigger paint immediately on click/down for brush
-        this.performPaintAt(event.clientX, event.clientY);
-      } else {
-        // Rectangle mode: Start tracking point
-        const hit = this.getHitFromMouse(event.clientX, event.clientY);
-        if (hit) {
-          const p = { x: Math.round(hit.x), z: Math.round(hit.z) };
-          this.dragStartPoint.set(p);
-          this.dragEndPoint.set(p);
-        }
-      }
     } else if (this.editorMode() === 'select' && event.button === 0) {
       this.isDragging = true;
       this.isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
@@ -906,13 +855,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
         const hx = Math.round(hit.x);
         const hz = Math.round(hit.z);
 
-        if (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') {
-          if (this.paintTool() === 'brush') {
-            this.performPaintAt(event.clientX, event.clientY);
-          } else {
-            this.dragEndPoint.set({ x: hx, z: hz });
-          }
-        } else if (this.editorMode() === 'select') {
+        if (this.editorMode() === 'select') {
           this.dragEndPoint.set({ x: hx, z: hz });
         }
       }
@@ -925,9 +868,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   private updateHoverAndPreview(event: MouseEvent) {
     const isInteractionMode =
       this.editorMode() === 'connect' ||
-      this.editorMode() === 'select' ||
-      this.editorMode() === 'paint' ||
-      this.editorMode() === 'paint-floor';
+      this.editorMode() === 'select';
 
     if (!isInteractionMode || (this.isDragging && this.editorMode() === 'pan')) {
       this.previewPoint.set(null);
@@ -969,12 +910,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
   @HostListener('window:mouseup')
   onMouseUp() {
     if (this.isDragging) {
-      if (
-        (this.editorMode() === 'paint' || this.editorMode() === 'paint-floor') &&
-        this.paintTool() === 'rectangle'
-      ) {
-        this.applyPaintRectangle();
-      } else if (this.editorMode() === 'select') {
+      if (this.editorMode() === 'select') {
         const start = this.dragStartPoint();
         const end = this.dragEndPoint();
         if (start && end && (start.x !== end.x || start.z !== end.z)) {
@@ -1016,36 +952,6 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     this.selectionService.setSelection(selectedIds);
   }
 
-  private applyPaintRectangle() {
-    const start = this.dragStartPoint();
-    const end = this.dragEndPoint();
-    if (!start || !end) return;
-
-    const minX = Math.min(start.x, end.x);
-    const maxX = Math.max(start.x, end.x);
-    const minZ = Math.min(start.z, end.z);
-    const maxZ = Math.max(start.z, end.z);
-
-    const coords = [];
-    for (let x = minX; x <= maxX; x++) {
-      for (let z = minZ; z <= maxZ; z++) {
-        coords.push({ x, y: z });
-      }
-    }
-
-    const settings = {
-      objectEnabled: this.paintObjectEnabled(),
-      floorEnabled: this.paintFloorEnabled(),
-      shape: this.brushShape(),
-      objectColor: this.brushObjectColor(),
-      floorColor: this.brushFloorColor(),
-    };
-
-    const changed = this.gridService.paintBatch(coords, settings);
-    if (changed) {
-      this.pushState();
-    }
-  }
 
   onWheel(event: WheelEvent) {
     event.preventDefault();
