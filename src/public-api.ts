@@ -2,7 +2,7 @@
  * Public API Surface of zflow
  */
 
-export * from './lib/models/fossflow.types';
+export * from './lib/models/zflow.types';
 export * from './lib/services/grid.service';
 export * from './lib/zflow-editor/zflow-editor';
 export { ZFlowEditor as ZflowEditor } from './lib/zflow-editor/zflow-editor';

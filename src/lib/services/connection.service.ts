@@ -1,5 +1,5 @@
 import { Injectable, isDevMode } from '@angular/core';
-import { Node, Conection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/zflow.types';
 import { Logger } from '../utils/logger';
 
 @Injectable()

@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Node, Conection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/zflow.types';
 import { Logger } from '../utils/logger';
 
 @Injectable()

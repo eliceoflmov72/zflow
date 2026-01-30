@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SelectionService } from '../../../services/selection.service';
-import { Node } from '../../../models/fossflow.types';
+import { Node } from '../../../models/zflow.types';
 import { Sidebar } from '../sidebar';
 import { VisualObjectsTab } from '../../visual-objects-tab/visual-objects-tab';
 

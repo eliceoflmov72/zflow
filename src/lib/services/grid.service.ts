@@ -1,6 +1,6 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Node, Conection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/zflow.types';
 import { Logger } from '../utils/logger';
 import { Quadtree, QuadtreeItem, Rectangle } from '../utils/quadtree';
 import { StorageService } from './storage.service';

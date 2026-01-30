@@ -2,7 +2,7 @@
 
 import { Mat4 } from './math-utils';
 import { Camera } from './camera';
-import { Node } from '../models/fossflow.types';
+import { Node } from '../models/zflow.types';
 import {
   AdaptiveFrameController,
   QualitySettings,

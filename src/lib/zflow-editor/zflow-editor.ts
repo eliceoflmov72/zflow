@@ -25,7 +25,7 @@ import { HistoryService } from '../services/history.service';
 import { StorageService } from '../services/storage.service';
 import { ConnectionService } from '../services/connection.service';
 import { WebGPUEngine } from '../webgpu/engine';
-import { Node, Conection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/zflow.types';
 import { ModalComponent } from '../components/ui/modal/modal.component';
 import { BottomToolbar } from '../components/toolbar/bottom-toolbar/bottom-toolbar';
 import { TopToolbar } from '../components/toolbar/top-toolbar/top-toolbar';

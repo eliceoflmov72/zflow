@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Node, Conection } from '../models/fossflow.types';
+import { Node, Conection } from '../models/zflow.types';
 
 export interface State {
   nodes: Node[];

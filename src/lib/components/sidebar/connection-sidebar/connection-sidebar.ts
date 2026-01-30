@@ -9,7 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { SelectionService } from '../../../services/selection.service';
 import { GridService } from '../../../services/grid.service';
-import { Conection } from '../../../models/fossflow.types';
+import { Conection } from '../../../models/zflow.types';
 import { Sidebar } from '../sidebar';
 
 @Component({
