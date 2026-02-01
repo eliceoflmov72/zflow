@@ -168,6 +168,30 @@
           [style.opacity]="node.lod === 'low' ? '0.7' : '1'"
         ></div>
       </div>
+      <!-- Node Label Connector (Visible only if title exists and not explicitly hidden) -->
+      @if (node.title && node.showLabel !== false) {
+        <div
+          class="ff-node-connector"
+          [style.height.px]="node.connectorHeight"
+          [style.transform]="
+            'translate3d(' + node.connectorX + 'px, ' + node.connectorY + 'px, 0) translate(-50%, 0)'
+          "
+          [style.z-index]="node.zIndex - 1"
+          [class.lod-hidden]="node.lod === 'low'"
+        ></div>
+
+        <!-- Node Label -->
+        <div
+          class="ff-node-label"
+          [style.transform]="
+            'translate3d(' + node.labelX + 'px, ' + node.labelY + 'px, 0) translate(-50%, -50%)'
+          "
+          [style.z-index]="node.zIndex + 10"
+          [class.lod-hidden]="node.lod === 'low'"
+        >
+          {{ node.title }}
+        </div>
+      }
     }
   </div>
 

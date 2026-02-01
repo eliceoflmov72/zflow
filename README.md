@@ -13,7 +13,7 @@ ZFlow is a high-performance, standalone library designed for creating interactiv
 - **Isometric Perspective**: Realistic 3D view with intuitive camera controls (Pan, Rotate, Zoom).
 - **Interactive Editor**: Built-in tools for painting, connecting, and selecting objects.
 - **Adaptive Quality**: Automatically adjusts rendering settings to maintain a smooth framerate.
-- **Fully Decoupled**: Zero external UI dependencies. All components and modales are self-contained.
+- **Fully Decoupled**: Zero external UI dependencies. All components and modals are self-contained.
 
 ## 📦 Installation
 
@@ -88,12 +88,12 @@ Your application must run in a browser with **WebGPU** enabled (Chrome 113+, Edg
 
 ### Input Properties
 
-- **`nodes`** (`Node[]`): Colección inicial de objetos y estados de la cuadrícula.
-- **`gridSize`** (`{ width: number; height: number }`): Dimensiones del área de trabajo (por defecto 40x40).
+- **`nodes`** (`Node[]`): Initial collection of objects and grid states.
+- **`gridSize`** (`{ width: number; height: number }`): Dimensions of the workspace (default 40x40).
 
 ### Output Events
 
-- **`nodesChange`** (`Node[]`): Se dispara cuando un objeto es creado, movido, pintado o eliminado.
+- **`nodesChange`** (`Node[]`): Triggered when an object is created, moved, painted, or deleted.
 
 ---
 
@@ -108,12 +108,16 @@ interface Node {
   id: string;
   position: { x: number; y: number; z?: number };
   title: string;
+  showLabel?: boolean;
   description: string;
   shape3D: string; // Filename in /forms/ or /images/
   color: string;
   floorColor: string;
   active: boolean;
   height?: number;
+  maxConnections?: number;
+  connectionPriority?: number;
+  connectionTags?: string[];
 }
 ```
 
@@ -140,12 +144,21 @@ interface Conection {
 
 ## 🏛️ Architecture
 
-ZFlow is designed to be completely autonomous:
+ZFlow is designed to be completely autonomous and framework-agnostic within the Angular ecosystem:
 
-- **No Workspace Dependencies**: Uses its own isolated config.
-- **Internal UI**: Includes its own buttons, toolbars, and modals (optimized for the 3D canvas).
-- **Service Driven**: Logic is decoupled into `GridService`, `ConnectionService`, and `WebGPUEngine`.
+- **No Workspace Dependencies**: Uses its own isolated configuration and state management.
+- **Internal UI**: Includes its own buttons, toolbars, and modals (optimized for the 3D canvas overlay).
+- **Service Driven**: Logic is decoupled into core services:
+  - `GridService`: Manages the spatial state, nodes, and quadtree partitioning.
+  - `ConnectionService`: Handles routing and relationships between nodes.
+  - `WebGPUEngine`: Handles the low-level rendering loop, shader compilation, and instanced mesh generation.
 
-## 📜 License
+## 📜 License (MIT)
 
-[Zemios Nebula License]
+**Copyright (c) 2026 ZFlow Project**
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+**The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.**
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

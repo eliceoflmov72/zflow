@@ -4,6 +4,31 @@
   (close)="selectionService.setSelection([])"
 >
   @if (isSingleSelection && singleNode) {
+    <div class="ff-section-label">Información</div>
+    <div class="ff-row" style="margin-bottom: 0.5rem;">
+      <div class="ff-field" style="width: 100%;">
+        <label>Título</label>
+        <input 
+          [value]="singleNode.title" 
+          (input)="updateSelectedNodes.emit({ title: $any($event.target).value })"
+          placeholder="Nombre del nodo"
+        />
+      </div>
+    </div>
+    
+    <div class="ff-row" style="margin-bottom: 0.5rem; align-items: center;">
+      <div class="ff-field" style="flex-direction: row; align-items: center; gap: 8px;">
+        <input 
+          type="checkbox" 
+          id="showLabelCheck"
+          [checked]="singleNode.showLabel !== false"
+          (change)="updateSelectedNodes.emit({ showLabel: $any($event.target).checked })"
+          style="width: auto; margin: 0;"
+        />
+        <label for="showLabelCheck" style="margin: 0; cursor: pointer;">Mostrar Etiqueta</label>
+      </div>
+    </div>
+
     <div class="ff-section-label">Posición</div>
     <div class="ff-row">
       <div class="ff-field">

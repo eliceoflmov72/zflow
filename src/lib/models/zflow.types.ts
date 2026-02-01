@@ -23,6 +23,7 @@ export interface Node {
   id: string;
   position: Position;
   title: string;
+  showLabel?: boolean;
   description: string;
   shape3D: Shape;
   color: string;

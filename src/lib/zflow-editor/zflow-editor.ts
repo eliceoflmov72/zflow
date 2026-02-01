@@ -34,6 +34,20 @@ import { ConnectionSidebar } from '../components/sidebar/connection-sidebar/conn
 import { PerformanceMonitorComponent } from '../components/performance-monitor/performance-monitor';
 import { Logger } from '../utils/logger';
 
+interface ProjectedNode extends Node {
+  screenX: number;
+  screenY: number;
+  labelX: number;
+  labelY: number;
+  connectorX: number;
+  connectorY: number;
+  connectorHeight: number;
+  z: number;
+  scale: number;
+  zIndex: number;
+  lod: 'low' | 'medium' | 'high';
+}
+
 @Component({
   selector: 'zflow-editor',
   standalone: true,
@@ -315,7 +329,7 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
 
     return activeNodes
       .map((node) => this.projectNode(node, dpr, fovFactor, quality))
-      .filter((n): n is NonNullable<typeof n> => n !== null)
+      .filter((n): n is ProjectedNode => n !== null)
       .sort((a, b) => b.z - a.z); // Sort back to front
   });
 
@@ -339,9 +353,18 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     return activeNodes;
   }
 
-  private projectNode(node: Node, dpr: number, fovFactor: number, quality: any) {
+  private projectNode(node: Node, dpr: number, fovFactor: number, quality: any): ProjectedNode | null {
     const screenPos = this.engine.worldToScreenCached(node.position.x, 0.0, node.position.y);
     if (!screenPos) return null;
+
+    // Project label position (1.5 units above the floor/node base)
+    // Adjust height based on node.height if available (though currently unused in most nodes)
+    const labelHeight = (node.height || 0) + 1.5;
+    const labelScreenPos = this.engine.worldToScreenCached(
+      node.position.x,
+      labelHeight,
+      node.position.y,
+    );
 
     const scale = (3.6 * fovFactor) / screenPos.z;
 
@@ -350,12 +373,36 @@ export class ZFlowEditor implements OnInit, AfterViewInit, OnDestroy {
     if (scale < quality.lodMediumThreshold) lod = 'low';
     else if (scale < quality.lodHighThreshold) lod = 'medium';
 
+    // Project label position: strictly vertical in 2D screen space
+    // We ignore the 3D perspective for the label height to ensure vertical alignment
+    const nodeX = screenPos.x / dpr;
+    const nodeY = screenPos.y / dpr;
+    
+    // Fixed vertical offset in pixels, scaled by zoom
+    // 120px seems right to clear the object (which is ~100px tall)
+    const verticalOffset = 120 * scale; 
+    
+    const labelX = nodeX;
+    const labelY = nodeY - verticalOffset;
+
+    // Connector starts below the label and ends at the node base
+    // Label approx height is ~24px, so we start 12px below center
+    const labelHalfHeight = 12;
+    const connectorStartY = labelY + labelHalfHeight;
+    const connectorHeight = Math.max(0, nodeY - connectorStartY);
+
     return {
       ...node,
-      screenX: screenPos.x / dpr,
-      screenY: screenPos.y / dpr,
+      screenX: nodeX,
+      screenY: nodeY,
+      labelX,
+      labelY,
+      connectorX: labelX,
+      connectorY: connectorStartY,
+      connectorHeight,
       z: screenPos.z,
-      scale: scale,
+      scale,
+      // Connector zIndex: slightly behind the object
       zIndex: 1000 - Math.floor(screenPos.z * 10),
       lod,
     };

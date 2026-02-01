@@ -101,6 +101,37 @@ canvas {
   justify-content: center;
   filter: drop-shadow(0 15px 40px rgba(0, 0, 0, 0.25));
 }
+.ff-node-connector {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  border-left: 3px dashed rgba(59, 130, 246, 0.5); /* Más visible y gordo */
+  transform-origin: 50% 0;
+  pointer-events: none;
+  /* z-index is controlled inline */
+}
+.ff-node-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: white;
+  border: 1.5px solid rgba(59, 130, 246, 0.3);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: opacity 0.2s;
+  will-change: transform;
+}
+.lod-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
 .ff-object-selected {
   filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.8))
     drop-shadow(0 15px 40px rgba(0, 0, 0, 0.25)) !important;

@@ -105,30 +105,6 @@ export class GridService {
   }
 
   /**
-   * Load initial state from storage
-   */
-  private loadFromStorage() {
-    const savedNodes = this.storageService.loadNodes();
-    const savedConns = this.storageService.loadConnections();
-
-    if (savedNodes && savedNodes.length > 0) {
-      // Normalize loaded nodes to ensure consistent floorColor format
-      const normalizedNodes = savedNodes.map((n) => ({
-        ...n,
-        floorColor: (n.floorColor || '#ffffff').toLowerCase(),
-        color: n.color || '#3b82f6',
-        shape3D: n.shape3D || 'isometric-cube.svg',
-        active: n.active ?? false,
-      }));
-      this.nodes.set(normalizedNodes);
-    }
-
-    if (savedConns) {
-      this.connections.set(savedConns);
-    }
-  }
-
-  /**
    * Initialize the grid with default nodes
    */
   initializeGrid(width: number, height: number, force = false) {
@@ -145,25 +121,89 @@ export class GridService {
     const initialNodes: Node[] = [];
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        initialNodes.push({
-          id: `${x}-${y}`,
-          position: { x, y },
-          title: `Node ${x},${y}`,
-          description: `Description for ${x},${y}`,
-          shape3D: 'isometric-cube.svg',
-          color: '#3b82f6',
-          floorColor: '#ffffff', // Lowercase for consistency
-          active: false,
-          maxConnections: 4,
-        });
+        initialNodes.push(this.createDefaultNode(x, y));
       }
     }
 
     this.nodes.set(initialNodes);
     this.connections.set([]);
     this.gridSize.set({ width, height });
-    this.storageService.saveState(this.nodes(), this.connections());
+    
+    // Load saved state over the defaults
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadFromStorage();
+    } else {
+      this.saveOptimizedState();
+    }
   }
+
+  private createDefaultNode(x: number, y: number): Node {
+    return {
+      id: `${x}-${y}`,
+      position: { x, y },
+      title: '',
+      description: `Description for ${x},${y}`,
+      shape3D: 'isometric-cube.svg',
+      color: '#3b82f6',
+      floorColor: '#ffffff', // Lowercase for consistency
+      active: false,
+      maxConnections: 4,
+    };
+  }
+
+  /**
+   * Load initial state from storage and merge with current grid
+   */
+  private loadFromStorage() {
+    const savedNodes = this.storageService.loadNodes();
+    const savedConns = this.storageService.loadConnections();
+
+    if (savedNodes && savedNodes.length > 0) {
+      this.nodes.update(currentNodes => {
+        const nodeMap = new Map(currentNodes.map(n => [n.id, n]));
+        
+        savedNodes.forEach(saved => {
+          // Merge logic: Saved data overrides default data
+          // Ensure we don't accidentally bring back old defaults if we changed schema
+          if (nodeMap.has(saved.id)) {
+             const existing = nodeMap.get(saved.id)!;
+             nodeMap.set(saved.id, {
+               ...existing,
+               ...saved,
+               // Force lowercase floorColor just in case
+               floorColor: (saved.floorColor || existing.floorColor).toLowerCase(),
+               // Handle legacy titles if needed (optional cleanup)
+               title: (saved.title && /^Node \d+,\s*\d+$/.test(saved.title)) ? '' : saved.title
+             });
+          }
+        });
+        
+        return Array.from(nodeMap.values());
+      });
+    }
+
+    if (savedConns) {
+      this.connections.set(savedConns);
+    }
+  }
+
+  /**
+   * Save only modified nodes to storage to save space
+   */
+  private saveOptimizedState() {
+    const allNodes = this.nodes();
+    // Filter nodes that are different from default
+    // A node is "modified" if it is active OR has a custom floor color OR has a title
+    const modifiedNodes = allNodes.filter(n => 
+      n.active || 
+      (n.floorColor && n.floorColor.toLowerCase() !== '#ffffff') ||
+      (n.title && n.title.trim() !== '') ||
+      (n.description && n.description !== `Description for ${n.position.x},${n.position.y}`)
+    );
+
+    this.storageService.saveState(modifiedNodes, this.connections());
+  }
+
 
   /**
    * Clear the grid, resetting all nodes to default state
@@ -273,7 +313,7 @@ export class GridService {
         return change ? { ...n, ...change } : n;
       }),
     );
-    this.storageService.saveState(this.nodes(), this.connections());
+    this.saveOptimizedState();
     return finalUpdates.length;
   }
 
