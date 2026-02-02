@@ -1,5 +1,6 @@
 # ZFlow 3D Editor
-<img width="1573" height="977" alt="isometric-diagram-editor" src="https://github.com/user-attachments/assets/a521f99c-52ed-44b4-9180-d7925283a81e" /><img width="1722" height="983" alt="Captura de pantalla 2026-01-29 234459" src="https://github.com/user-attachments/assets/2a4cd17f-a740-4738-b536-78fdbfb9fafd" />
+<img width="1573" height="977" alt="isometric-diagram-editor" src="https://github.com/user-attachments/assets/a521f99c-52ed-44b4-9180-d7925283a81e" />
+<img width="1563" height="973" alt="isometric-diagram-editor-1" src="https://github.com/user-attachments/assets/7825fb4e-0f52-4771-b772-6c4daad350e8" />
 
 
 
